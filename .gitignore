@@ -1,0 +1,112 @@
+# Project specific.
+
+outputs
+
+
+# Generic.
+
+# Tools
+.ruff_cache
+
+# Byte-compiled / optimized / DLL files
+__pycache__
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+*.o
+
+# Distribution / packaging
+.Python
+develop-eggs/
+eggs/
+.eggs/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+*.log
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Cython debug symbols
+cython_debug/
+
+# IDEs
+.idea
+.vscode
+.vim
+
+
+# experiment runs.
+runs
+weights
+
+# benchmark specific
+blueglass/modeling/benchmarks/generateu/build
+blueglass/modeling/benchmarks/generateu/projects/DDETRS/ddetrs/models/deformable_detr/ops/build
+blueglass/modeling/benchmarks/generateu/projects/DDETRS/ddetrs/models/deformable_detr/ops/dist
+blueglass/modeling/benchmarks/grounding_dino/build
+
+blueglass/third_party/mmdet
+blueglass/third_party/coco
+blueglass/third_party/lvis
+
+*sae-ckpts*
+*wandb*
+*artifacts*
+*SAE_RESULTS*
+
+temp_dir
+*ninja*
+*lib.linux*
+*.out*
+*runs*
+*weights*
+*blueglass_lens_features*
+*blueglass_lens_extract*
+*blueglass_lens_HF_dataset*
+blueglass_lens
+cache
+
+.DS_Store

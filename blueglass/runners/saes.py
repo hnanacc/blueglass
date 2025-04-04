@@ -1,0 +1,328 @@
+# Copyright 2025 Intel Corporation
+# SPDX: Apache-2.0
+
+import os
+import json
+import wandb
+from omegaconf import OmegaConf
+import numpy as np
+import torch
+from torch import Tensor, nn, autocast
+from torch.optim import Optimizer, AdamW
+from functools import lru_cache
+from collections import defaultdict, ChainMap
+from blueglass.utils.logger_utils import setup_blueglass_logger
+from typing import Iterable, List, Dict, Any, Tuple, Union
+from blueglass.configs import BLUEGLASSConf, Model, FeaturePattern, Precision
+from blueglass.runners import Runner
+from blueglass.modeling import build_model
+from blueglass.modeling.saes import build_sae, GroupedSAE
+from blueglass.evaluation import SAEEvaluator
+from blueglass.features import (
+    FeatureDataset,
+    FeatureInterceptor,
+    Patcher,
+    SAEPatcher,
+    build_feature_dataloader,
+)
+from blueglass.data import build_test_dataloader
+from blueglass.third_party.detectron2.evaluation import inference_on_dataset
+from blueglass.third_party.detectron2.engine import create_ddp_model
+
+logger = setup_blueglass_logger(__name__)
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+"""
+This runner assumes that we are training the SAEs with the same latent dimensions across layers/names/patterns/subpatterns
+"""
+
+
+class SAERunner(Runner):
+    def __init__(self, conf: BLUEGLASSConf):
+        super().__init__(conf)
+        self.base_lr = conf.runner.lr
+        self.patch_eval_period = conf.runner.patch_eval_period
+        self.warmup_steps = conf.runner.warmup_steps
+        self.device = DEVICE
+        self.feature_model = self._frozen(build_model(conf))
+        self.precision = getattr(torch, conf.runner.precision)
+        self.max_grad_norm = conf.runner.max_grad_norm
+        self.vanilla_fm_metrics = None
+        assert isinstance(self.precision, torch.dtype), "Invalid precision."
+
+    def _frozen(self, model: nn.Module):
+        for p in model.parameters():
+            p.requires_grad = False
+        return model.eval()
+
+    def _prepare_model_for_store(self, conf) -> Union[Model, nn.Module]:
+        return conf.model.name if conf.feature.use_cached else self.feature_model
+
+    def build_train_dataloader(self, conf):
+        return build_feature_dataloader(
+            conf,
+            conf.dataset.train,
+            self._prepare_model_for_store(conf),
+            "train",
+            self.prepare_filter_scheme(),
+        )
+
+    def build_model(self, conf) -> nn.Module:
+        store_meta = FeatureDataset(
+            conf,
+            conf.dataset.train,
+            self._prepare_model_for_store(conf),
+            filter_scheme=self.prepare_filter_scheme(),
+        ).infer_feature_meta()
+
+        assert (
+            "feature_dim_per_name" in store_meta
+        ), "Feature dims not found in store meta."
+
+        return create_ddp_model(
+            GroupedSAE(conf, store_meta["feature_dim_per_name"]).to(self.device),
+            broadcast_buffers=False,
+        )
+
+    def _compute_scaled_lr(self, conf: BLUEGLASSConf, model: nn.Module) -> float:
+        module = (
+            model.module
+            if isinstance(model, nn.parallel.DistributedDataParallel)
+            else model
+        )
+        return (
+            conf.runner.lr
+            if conf.runner.lr is not None
+            else 2e-4 / ((module.latents_dim / 2**14) ** 0.5)
+        )
+
+    def build_optimizer(
+        self,
+        conf: BLUEGLASSConf,
+        model: nn.Module,
+    ) -> Optimizer:
+        ## TODO: use params groups?
+        assert conf.runner.optimizer == "adamw", "Unsupported optimizer for saes."
+        return AdamW(
+            model.parameters(),
+            self._compute_scaled_lr(conf, model),
+            conf.runner.betas,
+            conf.runner.eps,
+            conf.runner.weight_decay,
+        )
+
+    def run_step(self, batched_inputs: Dict[str, Any]):
+        assert isinstance(self.model, GroupedSAE) or isinstance(
+            self.model.module, GroupedSAE
+        ), "Expected GroupedSAE, runner doesn't support other SAE types."
+        assert self.model.training, "Model not in train mode."
+
+        if self.step <= self.warmup_steps:
+            return self.model(batched_inputs, branch="warmup")
+
+        with autocast("cuda", dtype=self.precision):
+            records = self.model(batched_inputs, branch="autoenc")
+            assert isinstance(records, Dict), "Unexpected from saes."
+
+        self.optimizer.zero_grad()
+
+        for name, item in records.items():
+            if "loss_combined" in name:
+                assert isinstance(item, Tensor), "Loss should be a tensor."
+                item.backward()
+
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+
+        model = self.maybe_strip_ddp(self.model)
+        assert isinstance(model, GroupedSAE), "Expected module to be GroupedSAE"
+        model.set_decoder_to_unit_norm()
+
+        self.optimizer.step()
+        self.scheduler.step()
+
+        return records
+
+    def _build_patchers(self) -> Dict[str, Patcher]:
+
+        model = self.maybe_strip_ddp(self.model)
+
+        built_patchers = {
+            (t_name := model.transform_name(name, reverse=True)): SAEPatcher(
+                t_name, sae
+            )
+            for name, sae in model.eval().sae_per_name.items()
+        }
+        return built_patchers
+
+    def test(self) -> Dict[str, Any]:
+
+        # Step 1. Measure SAE metrics on test data.
+        fm = self._prepare_model_for_store(self.conf)
+        fd = build_feature_dataloader(
+            self.conf, self.conf.dataset.test, fm, "test", self.prepare_filter_scheme()
+        )
+        fe = SAEEvaluator(self.conf)
+        logger.info("Evaluation for SAE metrics.")
+        records_feature = inference_on_dataset(self.model, fd, fe)
+
+        # Step 2. Measure vanilla metrics on test data and feature model.
+        """
+        running vanilla evaluation only once for the entire run
+        """
+        records_patcher = {}
+        if self.vanilla_fm_metrics is None:
+            ds = build_test_dataloader(
+                self.conf.dataset.test, self.conf.dataset.batch_size
+            )
+            ev = self.build_evaluator(self.conf)
+            logger.info("Evaluation for detection in VLM (vanilla).")
+            vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
+
+            self.vanilla_fm_metrics = vanilla_records_patcher
+            for metric in vanilla_records_patcher.keys():
+                for _metric_ in vanilla_records_patcher[metric].keys():
+                    records_patcher[f"vanilla/{metric}_{_metric_}"] = (
+                        vanilla_records_patcher[metric][_metric_]
+                    )
+        else:
+            vanilla_records_patcher = self.vanilla_fm_metrics
+            for metric in vanilla_records_patcher.keys():
+                for _metric_ in vanilla_records_patcher[metric].keys():
+                    records_patcher[f"vanilla/{metric}_{_metric_}"] = (
+                        vanilla_records_patcher[metric][_metric_]
+                    )
+
+        if self.step % self.patch_eval_period == 0:
+            """
+            Executes inference for all ad-hoc models registered with the base model
+            """
+            # Step 2a. Measure metrics with patcher on test data and feature model.
+            test_patcher = self.patcher_test()
+            records_patcher = records_patcher | test_patcher
+
+        return {**records_feature, **records_patcher}
+
+    def patcher_test(self) -> Dict[str, Any]:
+
+        records_patcher = {}
+        built_patchers = self._build_patchers()
+        ds = build_test_dataloader(self.conf.dataset.test, self.conf.dataset.batch_size)
+        for name, _single_patcher in built_patchers.items():
+            single_patcher = {name: _single_patcher}
+            dm = FeatureInterceptor(
+                self.conf, self.feature_model, patchers_per_name=single_patcher
+            )
+            ev = self.build_evaluator(self.conf)
+            logger.info(f"Evaluation for detection in VLM with patcher ({name}).")
+            _records_patcher = inference_on_dataset(
+                dm, ds, ev, fwd_kwargs={"patch": True}
+            )
+            for metric in _records_patcher.keys():
+                for _metric_ in _records_patcher[metric].keys():
+                    records_patcher[f"{name}/{metric}_{_metric_}"] = _records_patcher[
+                        metric
+                    ][_metric_]
+
+        return records_patcher
+
+    def process_records(
+        self, gathered_records: List[Dict[str, Any]]
+    ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
+        def strip_extra_prefix(key: str, substr: str) -> str:
+            parts = key.rsplit("/", 1)
+            if len(parts) == 2 and parts[1].startswith(substr):
+                parts[1] = parts[1].removeprefix(substr)
+            return "/".join(parts)
+
+        losses_dict, metric_dict, visual_metric_dict, extras_dict = {}, {}, {}, {}
+
+        reduced_records = defaultdict(list)
+
+        for records_per_rank in gathered_records:
+            for name, item in records_per_rank.items():
+                reduced_records[name].append(item)
+
+        reduced_records = {
+            name: item if "metric" in name else np.mean(item)
+            for name, item in reduced_records.items()
+        }
+
+        to_remove = []
+        for name, item in reduced_records.items():
+            if "loss" in name:
+                losses_dict[name] = item
+                continue
+
+            if "extra" in name:
+                extras_dict[name] = item
+                continue
+
+            if "metric" in name:
+                metrics_data = dict(ChainMap(*item))
+
+                # Split into visual and non-visual metrics
+
+                visual_metrics = {
+                    k: v for k, v in metrics_data.items() if "visual" in k
+                }
+                non_visual_metrics = {
+                    f"metrics/{k}": v
+                    for k, v in metrics_data.items()
+                    if "visual" not in k
+                }
+
+                # Update target dicts
+                visual_metric_dict.update(visual_metrics)
+                metric_dict.update(non_visual_metrics)
+                continue
+
+        extras_dict = {
+            f"extra/{strip_extra_prefix(k, 'extra_')}": v
+            for k, v in extras_dict.items()
+            if "visual" not in k
+        }
+
+        # Safely remove after iteration
+        for key in to_remove:
+            metrics_data.pop(key)
+
+        if len(losses_dict) > 0:
+            losses_dict["losses_reduced"] = sum(losses_dict.values())
+
+        if len(metric_dict) > 0:
+            metric_dict["metric_fitness"] = sum(metric_dict.values())
+
+            # Computing metric fitness based on each sae
+            metric_fitness_dict = defaultdict(int)
+            non_visual_metrics_data = {
+                k: v for k, v in metrics_data.items() if "visual" not in k
+            }
+            for key, value in non_visual_metrics_data.items():
+
+                if isinstance(key, str) and "/" in key:
+                    prefix = key.split("/")[0]
+                    metric_fitness_dict[f"metric_reduced/{prefix}"] += value
+
+            metric_dict = metric_dict | metric_fitness_dict
+
+        return extras_dict, losses_dict, metric_dict, visual_metric_dict
+        # return losses_dict, metric_dict, visual_metric_dict, extras_dict
+
+    def checkpoint(self):
+        assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+        super().checkpoint()
+        if self.conf.experiment.use_wandb:
+            checkpoint_name = f"model_{self.step}"
+            basename = "{}.pth".format(checkpoint_name)
+            save_file = os.path.join(self.checkpointer.save_dir, basename)
+
+            artifact = wandb.Artifact(
+                name=f"saes-step-{self.step}",  # Unique name per checkpoint
+                type="sae model",
+                description=f"Model checkpoint at step {self.step}",
+                metadata={"step": self.step, "framework": "PyTorch"},
+            )
+            # Add the checkpoint file
+            artifact.add_file(str(save_file))
+            wandb.log_artifact(artifact)

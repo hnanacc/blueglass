@@ -1,0 +1,13 @@
+shapely
+jpeg4py
+visdom
+easydict
+scikit-image
+omegaconf
+boto3
+ipdb
+git+https://github.com/openai/CLIP.git
+transformers==4.25
+einops
+timm==0.9.8
+opencv-python-headless

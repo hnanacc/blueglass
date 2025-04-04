@@ -1,0 +1,378 @@
+# Copyright 2025 Intel Corporation
+# SPDX: Apache-2.0
+
+import torch
+from torch import nn, Tensor
+from torch.nn import functional as F
+from typing import Dict, List, Any, Tuple, Literal, Optional, Callable, Union
+from blueglass.configs import BLUEGLASSConf
+from blueglass.third_party.detectron2.utils import comm
+from mmdet.utils import AvoidCUDAOOM
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ROW_CHUNK_SIZE = 10000
+
+
+class AutoEncoder(nn.Module):
+    """AutoEncoders
+
+    ::Base class for Sparse AutoEncoders.
+
+    Provides methods and common utilities.
+    """
+
+    latents_dead_since: Tensor
+    latents_fire_count: Tensor
+    feature_seen_count: Tensor
+    threshold_interims: Tensor
+
+    def __init__(self, conf: BLUEGLASSConf, feature_dim: int):
+        super().__init__()
+        self.device = DEVICE
+        self.conf = conf
+
+        self.use_feature_norm = conf.sae.use_feature_norm
+        self.use_feature_bias = conf.sae.use_feature_bias
+        self.use_latents_bias = conf.sae.use_latents_bias
+        self.use_decoder_norm = conf.sae.use_decoder_norm
+
+        self.feature_dim = feature_dim
+        self.latents_dim = conf.sae.expansion_factor * feature_dim
+
+        self.threshold_dead = conf.sae.threshold_latents_dead
+        self.min_threshold_dead = conf.sae.min_threshold_latents_dead
+        self.threshold_dense = conf.sae.threshold_latents_dense
+        self.threshold_urate = conf.sae.threshold_update_rate
+
+        self.coeff_reconstr = conf.sae.loss_reconstr_coeff
+        self.coeff_sparsity = conf.sae.loss_sparsity_coeff
+
+        self.register_buffer("latents_dead_since", torch.zeros(self.latents_dim))
+        self.register_buffer("latents_fire_count", torch.zeros(self.latents_dim))
+        self.register_buffer("feature_seen_count", torch.tensor(0, dtype=torch.int))
+        self.register_buffer(
+            "threshold_interims", torch.tensor(conf.sae.threshold_top_latents)
+        )
+
+    def _init_components(self):
+        self.encoder = nn.Linear(self.feature_dim, self.latents_dim, bias=False)
+        self.decoder = nn.Linear(self.latents_dim, self.feature_dim, bias=False)
+
+        self.decoder.weight.data[:] = self.encoder.weight.t().data
+        self.set_decoder_to_unit_norm(grads=False)
+
+        if self.use_feature_bias:
+            self.feature_bias = nn.Parameter(torch.zeros(self.feature_dim))
+        if self.use_latents_bias:
+            self.latents_bias = nn.Parameter(torch.zeros(self.latents_dim))
+
+    def forward(
+        self,
+        batched_inputs: Dict[str, Any],
+        branch: Literal["warmup", "autoenc"] = "autoenc",
+    ):
+        match branch:
+            case "warmup":
+                return self.forward_warmup(batched_inputs)
+            case "autoenc":
+                return self.forward_autoenc(batched_inputs)
+            case unsupported:
+                raise ValueError(f"Unsupported branch: {unsupported}")
+
+    def forward_warmup(self, batched_inputs: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.use_feature_bias:
+            return {}
+
+        features, _ = self.preprocess(batched_inputs, {})
+        features_sum = features.sum(dim=0)
+        features_cnt = torch.tensor(
+            features.shape[0], dtype=torch.int, device=self.device
+        )
+
+        comm.all_reduce(features_sum)
+        comm.all_reduce(features_cnt)
+
+        assert features_sum.shape[0] == features.shape[-1], "Unexpected features sum."
+        assert features_cnt > 0, "Unexpected features count."
+
+        # initialize the feature bias as mean of features.
+        self.feature_bias.data = features_sum / features_cnt
+
+        return {}
+
+    def forward_autoenc(self, batched_inputs: Dict[str, Any]) -> Dict[str, Any]:
+        true_features, ctx = self.preprocess(batched_inputs, {})
+        prep_interims, ctx = self.encode(true_features, ctx)
+        posp_interims, ctx = self.process_interim(prep_interims, ctx)
+        pred_features, ctx = self.decode(posp_interims, ctx)
+
+        if self.training:
+            self.update_features_metrics(true_features, pred_features)
+            self.update_interims_metrics(posp_interims)
+            return self.compute_losses(true_features, pred_features, posp_interims, ctx)
+        else:
+            return self.postprocess(
+                batched_inputs, true_features, pred_features, posp_interims, ctx
+            )
+
+    def _norm(
+        self, features: Tensor, ctx: Dict[str, Any], eps: float = 1e-5
+    ) -> Tuple[Tensor, Dict[str, Tensor]]:
+        mean = features.mean(dim=-1, keepdim=True)
+        features = features - mean
+
+        stdv = features.std(dim=-1, keepdim=True)
+        features = features / (stdv + eps)
+
+        ctx["feature_norm_mean"] = mean
+        ctx["feature_norm_stdv"] = stdv
+
+        return features, ctx
+
+    def _denorm(
+        self, features: Tensor, ctx: Dict[str, Any]
+    ) -> Tuple[Tensor, Dict[str, Any]]:
+        assert "feature_norm_mean" in ctx, "Expected feature_norm_mean in ctx."
+        assert "feature_norm_stdv" in ctx, "Expected feature_norm_stdv in ctx."
+        return (features * ctx["feature_norm_stdv"]) + ctx["feature_norm_mean"], ctx
+
+    def _update_threshold(self, interims: Tensor):
+        pos_mask = interims > 0
+
+        if not pos_mask.any():
+            return
+
+        min_positive = interims[pos_mask].min()
+        self.threshold_interims = (
+            1 - self.threshold_urate
+        ) * self.threshold_interims + self.threshold_urate * min_positive
+
+    def preprocess(
+        self, batched_inputs: Dict[str, Any], ctx: Dict[str, Any]
+    ) -> Tuple[Tensor, Dict[str, Any]]:
+        features = batched_inputs["features"].to(self.device)
+        assert isinstance(features, Tensor), "Expected features to be Tensors."
+        return features, ctx
+
+    def encode(
+        self, true_features: Tensor, ctx: Dict[str, Any]
+    ) -> Tuple[Tensor, Dict[str, Any]]:
+        if self.use_feature_norm:
+            true_features, ctx = self._norm(true_features, ctx)
+
+        if self.use_feature_bias:
+            true_features = true_features - self.feature_bias
+
+        interims = self.encoder(true_features)
+
+        if self.use_latents_bias:
+            interims = interims + self.latents_bias
+
+        return interims, ctx
+
+    def process_interim(
+        self, interims: Tensor, ctx: Dict[str, Any]
+    ) -> Tuple[Tensor, Dict[str, Any]]:
+        raise NotImplementedError("Override in child class.")
+
+    def decode(
+        self, interims: Tensor, ctx: Dict[str, Any]
+    ) -> Tuple[Tensor, Dict[str, Any]]:
+        pred_features = self.decoder(interims)
+
+        if self.use_feature_bias:
+            pred_features = pred_features + self.feature_bias
+
+        if self.use_feature_norm:
+            pred_features, ctx = self._denorm(pred_features, ctx)
+
+        return pred_features, ctx
+
+    def _loss_reconstr(self, true_features: Tensor, pred_features: Tensor) -> Tensor:
+        return (
+            self.coeff_reconstr
+            * (pred_features.float() - true_features.float()).pow(2).mean()
+        )
+
+    def _loss_sparsity(self, interims: Tensor) -> Tensor:
+        return self.coeff_sparsity * self._norm_l1(interims)
+
+    def _chunked_reduce(
+        self,
+        tensor: Tensor,
+        row_fn: Callable[[Tensor], Tensor],
+        chunk_size: int = ROW_CHUNK_SIZE,
+    ) -> Tensor:
+        """
+        Applies a row-wise reduction function to the input tensor in chunks to prevent
+        GPU out-of-memory (OOM) issues during large-batch computations.
+
+        Args:
+            tensor (Tensor): The input tensor to process in row-wise chunks.
+            row_fn (Callable[[Tensor], Tensor]): A function applied to each chunk. It should
+                return a scalar tensor or a partial sum that will be accumulated.
+            chunk_size (int): Maximum number of rows to process at once.
+
+        Returns:
+            Tensor: The accumulated result from all chunks (e.g., total sum or count).
+        """
+        torch.cuda.empty_cache()
+        chunk_size = min(ROW_CHUNK_SIZE, tensor.shape[0])
+        total = None
+        for i in range(0, tensor.shape[0], min(chunk_size, tensor.shape[0])):
+            chunk = tensor[i : i + chunk_size]
+            chunk_val = row_fn(chunk)
+            total = chunk_val if total is None else total + chunk_val
+        return total
+
+    @AvoidCUDAOOM.retry_if_cuda_oom
+    def _norm_l0(self, interims: Tensor) -> Tensor:
+        # return (interims > 0).float().sum(dim=-1).mean()
+
+        chunk_norml0 = self._chunked_reduce(
+            tensor=interims,
+            row_fn=lambda chunk: (chunk > 0).float().sum(dim=-1).sum(),
+            chunk_size=ROW_CHUNK_SIZE,
+        )
+        norml0 = self._to_like(torch.tensor(chunk_norml0), interims) / self._to_like(
+            torch.tensor(interims.shape[0]), interims
+        )
+        return norml0
+
+    @AvoidCUDAOOM.retry_if_cuda_oom
+    def _norm_l1(self, interims: Tensor) -> Tensor:
+        chunk_norml1 = self._chunked_reduce(
+            tensor=interims,
+            row_fn=lambda chunk: chunk.float().abs().sum(dim=-1).sum(),
+            chunk_size=ROW_CHUNK_SIZE,
+        )
+        norml1 = self._to_like(torch.tensor(chunk_norml1), interims) / self._to_like(
+            torch.tensor(interims.shape[0]), interims
+        )
+        return norml1
+
+    @AvoidCUDAOOM.retry_if_cuda_oom
+    def _dense_pct(self) -> Tensor:
+        chunk_dense_pct = self._chunked_reduce(
+            tensor=self.latents_fire_count,
+            row_fn=lambda chunk: (chunk > self.threshold_dense).sum(),
+            chunk_size=ROW_CHUNK_SIZE,
+        )
+        dense_pct = (
+            self._to_like(torch.tensor(chunk_dense_pct), self.latents_fire_count)
+            / self._to_like(
+                torch.tensor(self.feature_seen_count), self.latents_fire_count
+            )
+            * 100
+        )
+        return dense_pct
+
+    @AvoidCUDAOOM.retry_if_cuda_oom
+    def _dead_pct(self) -> Tensor:
+        latents = self.latents_dead_since
+        chunk_dead_pct = self._chunked_reduce(
+            tensor=latents,
+            row_fn=lambda chunk: (chunk > self.threshold_dead).sum(),
+            chunk_size=ROW_CHUNK_SIZE,
+        )
+
+        dead_pct = (
+            self._to_like(torch.tensor(chunk_dead_pct), latents)
+            / self._to_like(torch.tensor(self.latents_dim), latents)
+            * 100
+        )
+        return dead_pct
+
+    @AvoidCUDAOOM.retry_if_cuda_oom
+    def _min_dead_pct(self) -> Tensor:
+        chunk_min_dead_pct = self._chunked_reduce(
+            tensor=self.latents_dead_since,
+            row_fn=lambda chunk: (chunk > self.min_threshold_dead).sum(),
+            chunk_size=ROW_CHUNK_SIZE,
+        )
+        min_dead_pct = (
+            chunk_min_dead_pct.float()
+            / self._to_like(
+                torch.tensor(self.feature_seen_count), self.latents_fire_count
+            )
+        ) * 100
+        return min_dead_pct
+
+    @AvoidCUDAOOM.retry_if_cuda_oom
+    @torch.no_grad()
+    def update_features_metrics(self, true_features: Tensor, _: Tensor):
+        cur_feature_seen_cnt = torch.tensor(
+            true_features.shape[0], dtype=torch.int, device=self.device
+        )
+        comm.all_reduce(cur_feature_seen_cnt)
+        self.feature_seen_count += cur_feature_seen_cnt
+
+    @AvoidCUDAOOM.retry_if_cuda_oom
+    @torch.no_grad()
+    def update_interims_metrics(self, interims: Tensor):
+        # Chunking this cur_latents_fire_cnt = (interims > 0).sum(dim=0)
+        cur_latents_fire_cnt = self._chunked_reduce(
+            tensor=interims,
+            row_fn=lambda chunk: (chunk > 0).sum(dim=0),
+            chunk_size=ROW_CHUNK_SIZE,
+        )
+
+        comm.all_reduce(cur_latents_fire_cnt)
+        self.latents_fire_count += cur_latents_fire_cnt
+
+        cur_feature_seen_cnt = torch.tensor(
+            interims.shape[0], dtype=torch.int, device=self.device
+        )
+        comm.all_reduce(cur_feature_seen_cnt)
+
+        self.latents_dead_since += cur_feature_seen_cnt
+        self.latents_dead_since[(cur_latents_fire_cnt > 0)] = 0
+
+    @torch.no_grad()
+    def set_decoder_to_unit_norm(self, grads=True):
+        normed = self.decoder.weight / self.decoder.weight.norm(dim=0, keepdim=True)
+        self.decoder.weight.data = normed
+
+        if not grads:
+            return
+
+        if self.use_decoder_norm:
+            return
+
+        assert (
+            self.decoder.weight.grad is not None
+        ), "Gradient norm should be used in train and after backward."
+
+        self.decoder.weight.grad -= (self.decoder.weight.grad * normed).sum(
+            dim=0, keepdim=True
+        ) * normed
+
+    def compute_losses(
+        self,
+        true_features: Tensor,
+        pred_features: Tensor,
+        interims: Tensor,
+        ctx: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        raise NotImplementedError("Override in child class.")
+
+    def postprocess(
+        self,
+        batched_inputs: Dict[str, Any],
+        true_features: Tensor,
+        pred_features: Tensor,
+        interims: Tensor,
+        ctx: Dict[str, Any],
+    ):
+        assert "top_latents" in ctx, "Expected top_latents in ctx."
+        return {
+            **self.compute_losses(true_features, pred_features, interims, ctx),
+            "pred_features": pred_features,
+            "proc_interims": interims,
+            "latents_dead_since": self.latents_dead_since,
+            "latents_fire_count": self.latents_fire_count,
+            "top_latents": ctx["top_latents"],
+        }
+
+    def _to_like(self, tensor: Tensor, ref: Tensor) -> Tensor:
+        return tensor.to(dtype=ref.dtype, device=ref.device)
