@@ -65,9 +65,7 @@ class SAEFeatureConf(FeatureConf):
         ]
     )
     use_cached: bool = True
-    # batch_size: int = 65536
-    # batch_size: int = 16384
-    batch_size: int = 500
+    batch_size: int = 65536
 
 
 def register_saes():

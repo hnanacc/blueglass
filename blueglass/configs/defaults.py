@@ -333,11 +333,13 @@ class PatchConf:
 
 @dataclass
 class ExperimentConf:
-    name: str = "testpass"
+    name: str = field(default="test_experiment")
     output_dir: str = field(default_factory=lambda: os.path.join(os.getcwd(), "runs"))
-    use_wandb: bool = True
-    wandb_every_proc: bool = False
-    seed: int = 1337
+    use_wandb: bool = field(default=True)
+    wandb_every_proc: bool = field(default=False)
+    wandb_project_name: str = field(default="blueglass")
+    wandb_entity_name: str = field(default="blueglass_entity")
+    seed: int = field(default=1337)
 
 
 @dataclass

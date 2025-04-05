@@ -12,7 +12,6 @@ import torch.multiprocessing as mp
 
 from blueglass.third_party.detectron2.utils import logger
 from blueglass.configs import BLUEGLASSConf, to_dict
-from blueglass.third_party.detectron2.utils import comm
 
 
 def setup_wandb(conf: BLUEGLASSConf):
