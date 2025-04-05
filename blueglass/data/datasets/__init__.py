@@ -18,9 +18,9 @@ def register_custom_datasets(args):
     def safe_register(register_function, name):
         try:
             register_function(args)
-            logger.info(f"Successfully registered {name}.")
+            logger.info(f"Successfully registered {name} dataset.")
         except Exception as e:
-            logger.warning(f"Failed to register {name}: {e}")
+            logger.warning(f"Failed to register {name} dataset: {e}")
 
     safe_register(register_kitti, "KITTI")
     safe_register(register_coco, "COCO")

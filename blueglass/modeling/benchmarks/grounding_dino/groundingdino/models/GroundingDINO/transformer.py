@@ -1127,7 +1127,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
         return tensor if pos is None else tensor + pos
 
     def forward_ffn(self, tgt):
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast(enabled=False):
             tgt2 = self.linear2(self.dropout3(self.activation(self.linear1(tgt))))
 
         assert self.layer_index is not None, "layer_index not set."

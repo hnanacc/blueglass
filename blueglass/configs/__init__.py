@@ -36,9 +36,9 @@ def register_all():
     def safe_register(register_function, name):
         try:
             register_function()
-            logger.info(f"Successfully registered {name}.")
+            logger.info(f"Successfully registered {name} Hydra based config.")
         except Exception as e:
-            logger.warning(f"Failed to register {name}: {e}")
+            logger.warning(f"Failed to register {name} Hydra based config: {e}")
 
     safe_register(register_benchmarks, "Benchmarks")
     safe_register(register_features, "Features")
