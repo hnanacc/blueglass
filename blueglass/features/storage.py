@@ -218,7 +218,8 @@ class FeatureStorage:
         return discovered
 
     def _prepare_readers(self):
-        for name in self._discover_feature_names():
+        discover_feature_names = self._discover_feature_names()
+        for name in discover_feature_names:
             if name not in self.reader_per_name:
                 _reader_per_name = Reader(self.conf, name, self.dataset, self.model)
                 check_rows = _reader_per_name.stream.count_rows(batch_size=1)

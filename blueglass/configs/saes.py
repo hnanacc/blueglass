@@ -53,7 +53,7 @@ class SAEDatasetConf(DatasetConf):
 @dataclass
 class SAEFeatureConf(FeatureConf):
     path: Optional[str] = FEATURE_DIR
-    layer_ids: List = field(default_factory=lambda: [0, 1])
+    layer_ids: List = field(default_factory=lambda: [0, 1, 2])
     intercept_mode: InterceptMode = InterceptMode.MANUAL
     patterns: List[FeaturePattern] = field(
         default_factory=lambda: [

@@ -239,8 +239,8 @@ class RunnerConf:
 
     max_steps: int = 50_000
     logs_period: int = 1
-    eval_period: int = 10
-    patch_eval_period: int = 20
+    eval_period: int = 100
+    patch_eval_period: int = 200
     resume: bool = False
 
     optimizer: Optimizer = Optimizer.ADAMW
@@ -255,7 +255,7 @@ class RunnerConf:
 
     scheduler: Scheduler = Scheduler.MULTISTEP
     milestones: List[int] = field(
-        default_factory=lambda: [50_000, 75_000, 85_000, 1_00_000, 5_00_000, 75_00_000]
+        default_factory=lambda: [40_000, 45_000, 49_000]
     )
 
 

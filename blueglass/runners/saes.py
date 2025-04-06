@@ -119,7 +119,11 @@ class SAERunner(Runner):
         assert self.model.training, "Model not in train mode."
 
         if self.step <= self.warmup_steps:
-            return self.model(batched_inputs, branch="warmup")
+            _return = self.model(batched_inputs, branch="warmup")
+            self.scheduler.step()
+            current_lr = self.optimizer.param_groups[0]['lr']
+            logger.info(f"[Warmup Step {self.step}/{self.warmup_steps}, LR: {current_lr:.4f}")
+            return _return
 
         with autocast("cuda", dtype=self.precision):
             records = self.model(batched_inputs, branch="autoenc")

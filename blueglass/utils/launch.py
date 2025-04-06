@@ -16,8 +16,8 @@ from blueglass.configs import BLUEGLASSConf, to_dict
 
 def setup_wandb(conf: BLUEGLASSConf):
     wandb.init(
-        project="blueglass",
-        entity="intellabs-onboarding",
+        project=conf.experiment.wandb_project_name,
+        entity=conf.experiment.wandb_entity_name,
         config=to_dict(conf),
         name=conf.experiment.name,
         group=f"DDP-{conf.experiment.name}" if conf.num_gpus > 0 else None,
