@@ -8,7 +8,6 @@ from .coco import register_coco
 from .lvis import register_lvis
 from .ecpersons import register_ecpersons
 from .valerie22 import register_valerie22
-from .funnybirds import register_funnybirds
 from .openimages import register_openimages
 
 logger = setup_blueglass_logger(__name__)
@@ -28,5 +27,4 @@ def register_custom_datasets(args):
     safe_register(register_bdd100k, "BDD100K")
     safe_register(register_ecpersons, "ECPersons")
     safe_register(register_valerie22, "Valerie22")
-    safe_register(register_funnybirds, "FunnyBirds")
     safe_register(register_openimages, "OpenImages")
