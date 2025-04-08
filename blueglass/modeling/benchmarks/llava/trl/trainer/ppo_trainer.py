@@ -1543,8 +1543,7 @@ class PPOTrainer(BaseTrainer):
             )
             return
 
-        if not os.path.exists(path):
-            os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
 
         model_card_content = MODEL_CARD_TEMPLATE.format(
             model_name=model_name, model_id=f"{user}/{path}"

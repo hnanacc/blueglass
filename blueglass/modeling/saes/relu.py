@@ -29,6 +29,25 @@ class ReLU(AutoEncoder):
         interims: Tensor,
         ctx: Dict[str, Any],
     ) -> Dict[str, Any]:
+        """
+        Computes and returns all loss components and relevant auxiliary metrics.
+
+        The returned dictionary includes:
+        - Keys prefixed with "loss_" → shown in the "Losses" tab on Weights & Biases (wandb)
+        - Keys prefixed with "extra_" → shown in the "Extras" tab on wandb
+
+        Loss terms:
+            - loss_reconstr: reconstruction loss between predicted and true features
+            - loss_sparsity: regularization loss enforcing sparsity in the activation
+            - loss_topk_aux: optional auxiliary term based on top-k statistics
+            - loss_combined: sum of all three (total training objective)
+
+        Extra metrics:
+            - extra_norm_l0 / l1: L0 and L1 norms for activation sparsity
+            - extra_dense_pct / dead_pct / min_dead_pct: density and dead neuron stats
+            - extra_feature_seen_count: how many features have been seen (for bookkeeping)
+        """
+        
         loss_sparsity = self._loss_sparsity(interims)
         loss_reconstr = self._loss_reconstr(true_features, pred_features)
 
@@ -36,9 +55,10 @@ class ReLU(AutoEncoder):
             "loss_combined": loss_reconstr + loss_sparsity,
             "loss_reconstr": loss_reconstr,
             "loss_sparsity": loss_sparsity,
-            "norm_l0": self._norm_l0(interims),
-            "norm_l1": self._norm_l1(interims),
-            "dense_pct": self._dense_pct(),
-            "dead_pct": self._dead_pct(),
-            "feature_seen_count": self.feaure_seen_count,
+            "extra_norm_l0": self._norm_l0(interims),
+            "extra_norm_l1": self._norm_l1(interims),
+            "extra_dense_pct": self._dense_pct(),
+            "extra_dead_pct": self._dead_pct(),
+            "extra_min_dead_pct": self._min_dead_pct(),
+            "extra_feature_seen_count": self.feature_seen_count,
         }

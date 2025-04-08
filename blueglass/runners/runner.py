@@ -110,8 +110,7 @@ class Runner:
 
     def build_checkpointer(self, conf: BLUEGLASSConf, model, optimizer) -> Checkpointer:
         path = f"{conf.experiment.output_dir}/ckpts"
-        if not os.path.exists(path):
-            os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
         return Checkpointer(model, path, optimizer=optimizer)
 
     # TODO: Fix num_workers
