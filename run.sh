@@ -28,7 +28,7 @@ export FEATURE_DIR="/nwstore/blueglass/blue_lens_extract"
 
 echo "Found micromamba on the system."
 eval "$(micromamba shell.hook bash)"
-micromamba activate xai
+micromamba activate blueglass
 
 echo "Using PYTHON : $(which python)"
 nvidia-smi
