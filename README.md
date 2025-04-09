@@ -10,9 +10,6 @@
 
 **Blue Glass** is an open-source framework for interpretability and analysis of vision-language and vision-only models. It empowers researchers and practitioners to understand what deep models *see* and *focus on* by offering tools to extract, probe, and build ad hoc XAI models for internal representations.
 
-
-**Blue Glass** is an open-source framework for interpretability and analysis of vision-language and vision-only models. It empowers researchers and practitioners to understand what deep models see and attend to by providing tools to extract, probe, and build ad-hoc XAI models on internal representations.
-
 The framework includes a custom infrastructure and lightweight modifications to third-party model libraries, enabling seamless feature extraction from the models. These extracted features are compiled into structured datasets called **Blue Glass-Lens**, laying the foundation for advanced Explainable AI research and experimentation.
 
 ---
