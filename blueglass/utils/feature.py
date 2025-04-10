@@ -17,8 +17,8 @@ from typing import List, Dict, Any, Optional
 
 logger = setup_blueglass_logger(__name__)
 
-REPO_ID = "IntelLabs/BLUE-Lens"
-REMOTE = "IntelLabs/BLUE-Lens"
+REPO_ID = "IntelLabs/BlueLens"
+REMOTE = "IntelLabs/BlueLens"
 
 
 def _download_features_from_hf(
@@ -29,7 +29,7 @@ def _download_features_from_hf(
     pattern: Optional[str] = None,
     subpattern: Optional[str] = None,
 ):
-    repo_id = "IntelLabs/BLUE-Lens"
+    repo_id = "IntelLabs/BlueLens"
     """
     Downloads dataset files from Hugging Face Hub based on filtering parameters.
 

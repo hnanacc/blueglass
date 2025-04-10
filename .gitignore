@@ -103,10 +103,8 @@ temp_dir
 *.out*
 *runs*
 *weights*
-*blueglass_lens_features*
-*blueglass_lens_extract*
-*blueglass_lens_HF_dataset*
-blueglass_lens
+*bluelens*
+*BlueLens*
 cache
 
 .DS_Store

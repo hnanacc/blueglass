@@ -263,8 +263,7 @@ class AutoEncoder(nn.Module):
             / self._to_like(
                 torch.tensor(self.feature_seen_count), self.latents_fire_count
             )
-            * 100
-        )
+        )* 100
         return dense_pct
 
     @AvoidCUDAOOM.retry_if_cuda_oom
@@ -279,8 +278,7 @@ class AutoEncoder(nn.Module):
         dead_pct = (
             self._to_like(torch.tensor(chunk_dead_pct), latents)
             / self._to_like(torch.tensor(self.latents_dim), latents)
-            * 100
-        )
+        )* 100
         return dead_pct
 
     @AvoidCUDAOOM.retry_if_cuda_oom
