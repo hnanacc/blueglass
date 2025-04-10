@@ -1,7 +1,6 @@
+#!/usr/bin/bash
 # Copyright 2025 Intel Corporation
 # SPDX: Apache-2.0
-
-#!/usr/bin/bash
 
 # -------------------------------------
 # Setup Variables Here.
