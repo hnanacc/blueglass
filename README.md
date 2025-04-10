@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/blueglass.png" alt="Blue Glass Logo" width="480"/>
+  <img src="docs/images/blueglass.png" alt="Blue Glass Logo" width="160"/>
 </div>
 
 
