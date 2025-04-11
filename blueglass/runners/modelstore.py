@@ -16,7 +16,7 @@ logger = setup_blueglass_logger(__name__)
 
 
 class ModelstoreRunner(Runner):
-    
+
     def build_model(self, conf: BLUEGLASSConf) -> nn.Module:
         model = build_model(conf)
         """
@@ -24,7 +24,7 @@ class ModelstoreRunner(Runner):
         """
         model = create_ddp_model(model)
         return model
-        
+
     def process_records(
         self, gathered_records: List[Dict[str, Any]]
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -75,4 +75,3 @@ class ModelstoreRunner(Runner):
 
     def infer(self):
         raise NotImplementedError("infer is not supported for this runner.")
-

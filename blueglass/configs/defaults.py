@@ -129,7 +129,8 @@ class SAEVariant(str, Enum):
     """
     For Relu: Sparsity loss coeff=0.01
     """
-    RELU = "relu" 
+
+    RELU = "relu"
     TOPK = "topk"
     TOPK_FAST = "topk_fast"
     MATRYOSHKA = "matryoshka"
