@@ -240,7 +240,7 @@ class RunnerConf:
     name: Runner = Runner.BENCHMARK
     mode: RunnerMode = RunnerMode.TEST
 
-    max_steps: int = 6_000
+    max_steps: int = 50_000
     logs_period: int = 1
     eval_period: int = 100
     patch_eval_period: int = 200
