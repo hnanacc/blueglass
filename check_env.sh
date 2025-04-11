@@ -72,16 +72,16 @@ done
 
 if [ "${#missing[@]}" -gt 0 ]; then
     echo "⚠️ Missing dependencies found: ${missing[*]}"
-    echo "🔧 Attempting to install with sudo..."
+    echo "🔧 Attempting to install with sudo (press Enter to skip)..."
 
     echo "📦 Running apt-get update..."
-    set +e  # Turn off exit-on-error
+    set +e
     $SUDO apt-get update
     UPDATE_STATUS=$?
-    set -e  # Re-enable exit-on-error
+    set -e
 
     if [ $UPDATE_STATUS -ne 0 ]; then
-        echo "❌ apt-get update failed. Skipping installation step."
+        echo "❌ apt-get update failed or was cancelled. Skipping installation."
     else
         echo "📦 Installing missing packages..."
         set +e
@@ -90,7 +90,7 @@ if [ "${#missing[@]}" -gt 0 ]; then
         set -e
 
         if [ $INSTALL_STATUS -ne 0 ]; then
-            echo "❌ apt-get install failed. Continuing script..."
+            echo "❌ apt-get install failed or was cancelled. Continuing script..."
         else
             echo "✅ Packages installed successfully."
         fi
