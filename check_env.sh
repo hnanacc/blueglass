@@ -3,9 +3,28 @@ set -e
 
 if [ "$EUID" -ne 0 ]; then
     SUDO='sudo'
+    echo "🔧 Not running as root. Will install using sudo."
 else
     SUDO=''
+    echo "🛠️ Running as root. Installing without sudo."
 fi
+
+
+CUDA_HOME=/home/Alan_Smithee/software/cuda-12.4
+if [[ "$CUDA_HOME" == *"Alan_Smithee"* ]]; then
+    echo "🎬 Plot twist: CUDA path contains 'Alan_Smithee' — the infamous unknown director. This script refuses to work with mysterious identities. Please pass a real CUDA path."
+    exit 1
+fi
+
+echo "🌍  Exporting environment variables"
+# Define the CUDA installation path
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+
+## Specify the path of your installed mamba
+MAMBA_PATH=~/micromamba
+source "$MAMBA_PATH/etc/profile.d/mamba.sh"
 
 echo "🖥️  Checking OS..."
 if [[ "$(uname)" == "Linux" ]]; then
@@ -51,9 +70,30 @@ for pkg in "${packages[@]}"; do
 done
 
 if [ "${#missing[@]}" -gt 0 ]; then
-    echo "⚠️ Installing missing dependencies: ${missing[*]}"
+    echo "⚠️ Missing dependencies found: ${missing[*]}"
+    echo "🔧 Attempting to install with sudo..."
+
+    echo "📦 Running apt-get update..."
+    set +e  # Turn off exit-on-error
     $SUDO apt-get update
-    $SUDO apt-get install -y --no-install-recommends "${missing[@]}"
+    UPDATE_STATUS=$?
+    set -e  # Re-enable exit-on-error
+
+    if [ $UPDATE_STATUS -ne 0 ]; then
+        echo "❌ apt-get update failed. Skipping installation step."
+    else
+        echo "📦 Installing missing packages..."
+        set +e
+        $SUDO apt-get install -y --no-install-recommends "${missing[@]}"
+        INSTALL_STATUS=$?
+        set -e
+
+        if [ $INSTALL_STATUS -ne 0 ]; then
+            echo "❌ apt-get install failed. Continuing script..."
+        else
+            echo "✅ Packages installed successfully."
+        fi
+    fi
 else
     echo "✅ All required dependencies are installed."
 fi
@@ -69,5 +109,3 @@ else
     source $HOME/.bashrc
     echo "✅ micromamba $(micromamba --version) installed."
 fi
-
-

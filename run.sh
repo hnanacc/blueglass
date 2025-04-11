@@ -7,41 +7,39 @@
 # -------------------------------------
 
 export TOKENIZERS_PARALLELISM=false
-export WORLD_SIZE=1
+export WORLD_SIZE=3
 export CUDA_VISIBLE_DEVICES=$(seq -s, 0 $((WORLD_SIZE-1)))
-export CUDA_VISIBLE_DEVICES=0
-export DATASET_DIR="/nwstore/datasets"
-export WEIGHTS_DIR="/nwstore/harshal/weights"
-export FEATURE_DIR="/nwstore2/qutub/BlueLens"
+
+export DATASET_DIR="/scr/Alan_Smithee/datasets"
+export WEIGHTS_DIR="/home/Alan_Smithee/github_repos/weights"
+export FEATURE_DIR="/scr/Alan_Smithee/BlueLens"
 
 
 # -------------------------------------
 # Setup Environment.
 # -------------------------------------
 
-# if ! command -v micromamba 2>&1 >/dev/null
-# then
-#     echo "No environment manager not found. Cannot proceed."
-#     exit 1
-# fi
+MAMBA_PATH=~/micromamba
+source "$MAMBA_PATH/etc/profile.d/mamba.sh"
 
-echo "Found micromamba on the system."
-eval "$(micromamba shell.hook bash)"
+if command -v micromamba &> /dev/null; then
+    echo "✅ micromamba version: $(micromamba --version)"
+then
+    echo "No environment manager not found. Cannot proceed."
+    exit 1
+fi
+
+eval "$(micromamba shell hook --shell bash)"
 micromamba activate blueglass_env
 
 echo "Using PYTHON : $(which python)"
 nvidia-smi
 
-# BATCH_SIZE_ALL=131072
-# BATCH_SIZE_ALL=57344
-# BATCH_SIZE_ALL=49152
-# BATCH_SIZE_ALL=32768
-# BATCH_SIZE_ALL=16384
-
-BATCH_SIZE_ALL=12
-
-# Do floating point division and ceil to the next integer
-BATCH_SIZE=$(awk -v total=$BATCH_SIZE_ALL -v ws=$WORLD_SIZE 'BEGIN { print int((total + ws - 1) / ws) }')
+# BATCH_SIZE=131072
+# BATCH_SIZE=57344
+# BATCH_SIZE=49152
+# BATCH_SIZE=32768
+BATCH_SIZE=16000
 
 echo "World size: $WORLD_SIZE"
 echo "Ceiled per-worker batch size: $BATCH_SIZE"
@@ -54,7 +52,7 @@ python launch.py \
     experiment.use_wandb=False \
     num_gpus=$WORLD_SIZE \
     dataset.infer=COCO_MINI \
-    dataset.train=COCO_MINI \
+    dataset.train=COCO_TRAIN \
     dataset.test=COCO_MINI \
     feature.path=$FEATURE_DIR \
     sae.variant=$SAE_VARIANT \
