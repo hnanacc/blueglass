@@ -11,8 +11,8 @@ export WORLD_SIZE=1
 export CUDA_VISIBLE_DEVICES=$(seq -s, 0 $((WORLD_SIZE-1)))
 export CUDA_VISIBLE_DEVICES=0
 export DATASET_DIR="/nwstore/datasets"
-export WEIGHTS_DIR="/nwstore/weights"
-export FEATURE_DIR="/nwstore/blueglass/blue_lens_extract"
+export WEIGHTS_DIR="/nwstore/harshal/weights"
+export FEATURE_DIR="/nwstore2/qutub/BlueLens"
 
 
 # -------------------------------------
@@ -32,12 +32,20 @@ micromamba activate blueglass_env
 echo "Using PYTHON : $(which python)"
 nvidia-smi
 
-# batch_size=131072
-# BATCH_SIZE=16384
-# BATCH_SIZE=32768
-# BATCH_SIZE=49152
-# BATCH_SIZE=57344
-BATCH_SIZE=12
+# BATCH_SIZE_ALL=131072
+# BATCH_SIZE_ALL=57344
+# BATCH_SIZE_ALL=49152
+# BATCH_SIZE_ALL=32768
+# BATCH_SIZE_ALL=16384
+
+BATCH_SIZE_ALL=12
+
+# Do floating point division and ceil to the next integer
+BATCH_SIZE=$(awk -v total=$BATCH_SIZE_ALL -v ws=$WORLD_SIZE 'BEGIN { print int((total + ws - 1) / ws) }')
+
+echo "World size: $WORLD_SIZE"
+echo "Ceiled per-worker batch size: $BATCH_SIZE"
+
 SAE_VARIANT=TOPK_FAST
 DATASET="COCO"
 EXPERIMENT_NAME="sae.gdino.${DATASET}_train_${SAE_VARIANT}_B${BATCH_SIZE}"
@@ -51,5 +59,7 @@ python launch.py \
     feature.path=$FEATURE_DIR \
     sae.variant=$SAE_VARIANT \
     feature.batch_size=$BATCH_SIZE \
-    experiment.name=$EXPERIMENT_NAME
+    experiment.name=$EXPERIMENT_NAME \
+    experiment.wandb_project_name="BlueGlass" \
+    experiment.wandb_entity_name="intellabs"
     
