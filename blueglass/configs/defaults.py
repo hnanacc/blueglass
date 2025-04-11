@@ -237,7 +237,7 @@ class LabelMatchEvaluatorConf(EvaluatorConf):
 
 @dataclass
 class RunnerConf:
-    name: Runner = Runner.BENCHMARK
+    name: Runner = Runner.MODELSTORE
     mode: RunnerMode = RunnerMode.TEST
 
     max_steps: int = 50_000

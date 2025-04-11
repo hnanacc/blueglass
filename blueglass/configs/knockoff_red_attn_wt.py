@@ -33,13 +33,13 @@ layer_knockoff_exp_config = LayerKnockoffExpConf(
 
 
 @dataclass
-class BenchmarkDatasetConf(DatasetConf):
+class ModelstoreDatasetConf(DatasetConf):
     batch_size: int = 1
 
 
 @dataclass
-class BenchmarkRunnerConf(RunnerConf):
-    name: Runner = Runner.BENCHMARK
+class ModelstoreRunnerConf(RunnerConf):
+    name: Runner = Runner.MODELSTORE
     mode: RunnerMode = RunnerMode.TEST
 
 
@@ -50,8 +50,8 @@ def register_layerknockoff():
         cs.store(
             f"layerknockoff.yolo.{ds_name}",
             BLUEGLASSConf(
-                runner=BenchmarkRunnerConf(),
-                dataset=BenchmarkDatasetConf(test=ds_test, label=ds_test),
+                runner=ModelstoreRunnerConf(),
+                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.YOLO,
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
@@ -65,8 +65,8 @@ def register_layerknockoff():
         cs.store(
             f"layerknockoff.dino.{ds_name}",
             BLUEGLASSConf(
-                runner=BenchmarkRunnerConf(),
-                dataset=BenchmarkDatasetConf(test=ds_test, label=ds_test),
+                runner=ModelstoreRunnerConf(),
+                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.DINO,
                     conf_path=osp.join(
@@ -85,8 +85,8 @@ def register_layerknockoff():
         cs.store(
             f"layerknockoff.gdino.{ds_name}",
             BLUEGLASSConf(
-                runner=BenchmarkRunnerConf(),
-                dataset=BenchmarkDatasetConf(test=ds_test, label=ds_test),
+                runner=ModelstoreRunnerConf(),
+                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GDINO,
                     conf_path=osp.join(
@@ -109,8 +109,8 @@ def register_layerknockoff():
         cs.store(
             f"layerknockoff.genu.{ds_name}",
             BLUEGLASSConf(
-                runner=BenchmarkRunnerConf(),
-                dataset=BenchmarkDatasetConf(test=ds_test, label=ds_test),
+                runner=ModelstoreRunnerConf(),
+                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GENU,
                     conf_path=osp.join(
@@ -136,8 +136,8 @@ def register_layerknockoff():
         cs.store(
             f"layerknockoff.florence.{ds_name}",
             BLUEGLASSConf(
-                runner=BenchmarkRunnerConf(),
-                dataset=BenchmarkDatasetConf(test=ds_test, label=ds_test),
+                runner=ModelstoreRunnerConf(),
+                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
                 experiment=ExperimentConf(
@@ -149,8 +149,8 @@ def register_layerknockoff():
         cs.store(
             f"layerknockoff.gemini.{ds_name}",
             BLUEGLASSConf(
-                runner=BenchmarkRunnerConf(),
-                dataset=BenchmarkDatasetConf(test=ds_test, label=ds_test),
+                runner=ModelstoreRunnerConf(),
+                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GEMINI,
                     api_key=os.getenv("GEMINI_KEY", None),

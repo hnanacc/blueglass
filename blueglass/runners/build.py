@@ -5,7 +5,6 @@ from blueglass.utils.logger_utils import setup_blueglass_logger
 from blueglass.configs import BLUEGLASSConf, Runner as RunnerType
 from .runner import Runner
 from .modelstore import ModelstoreRunner
-from .finetune import FineTuneRunner
 from .layers_patch import LayersPatchRunner
 from .features_extract import FeatureExtractRunner
 from .probes_linear_vlm import VLMLinearProbeRunner
