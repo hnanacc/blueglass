@@ -12,7 +12,7 @@ else
 fi
 
 # Check if the environment is valid
-./check_env.sh
+source ./check_env.sh
 
 result=$?
 if [ $result -ne 0 ]; then
@@ -26,18 +26,6 @@ fi
 export PROJECT_ROOT=$PWD
 export BENCHMARK_ROOT="$PROJECT_ROOT/blueglass/modeling/modelstore"
 export THIRD_PARTY_ROOT="$PROJECT_ROOT/blueglass/third_party"
-
-# Create micromamba env
-eval "$(micromamba shell hook --shell bash)"
-
-# Check if existing micromamba environment exists
-if micromamba env list | grep -q "blueglass_env"; then
-    echo "⚠️  Environment 'blueglass_env' already exists. Skipping creation."
-else
-    echo "Creating micromamba environment 'blueglass_env'..."
-    micromamba create -y -n blueglass_env python=3.11
-fi
-micromamba activate blueglass_env
 
 # Install common python dependencies
 pip install -r requirements.txt

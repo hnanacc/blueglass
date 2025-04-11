@@ -12,7 +12,8 @@ fi
 
 CUDA_HOME=/home/Alan_Smithee/software/cuda-12.4
 if [[ "$CUDA_HOME" == *"Alan_Smithee"* ]]; then
-    echo "🎬 Plot twist: CUDA path contains 'Alan_Smithee' — the infamous unknown director. This script refuses to work with mysterious identities. Please pass a real CUDA path."
+    echo "🎬 Plot twist: CUDA path contains 'Alan_Smithee' — the infamous unknown director. This script refuses to work with mysterious identities. 
+    Please pass a real CUDA path."
     exit 1
 fi
 
@@ -109,3 +110,15 @@ else
     source $HOME/.bashrc
     echo "✅ micromamba $(micromamba --version) installed."
 fi
+
+# Create micromamba env
+eval "$(micromamba shell hook --shell bash)"
+
+# Check if existing micromamba environment exists
+if micromamba env list | grep -q "blueglass_env"; then
+    echo "⚠️  Environment 'blueglass_env' already exists. Skipping creation."
+else
+    echo "Creating micromamba environment 'blueglass_env'..."
+    micromamba create -y -n blueglass_env python=3.11
+fi
+micromamba activate blueglass_env
