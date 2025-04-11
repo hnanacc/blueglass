@@ -31,7 +31,7 @@ class IOUWeightedHungarianBBoxIOUTracker(VanillaHungarianBBoxIOUTracker):
         min_box_rel_dim: float = 0.02,
         min_instance_period: int = 1,
         track_iou_threshold: float = 0.5,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:

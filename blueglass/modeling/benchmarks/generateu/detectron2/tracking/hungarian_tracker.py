@@ -30,7 +30,7 @@ class BaseHungarianTracker(BaseTracker):
         max_lost_frame_count: int = 0,
         min_box_rel_dim: float = 0.02,
         min_instance_period: int = 1,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:

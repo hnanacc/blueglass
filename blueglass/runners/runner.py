@@ -200,7 +200,10 @@ class Runner:
         else:
             metric_dict["metric_fitness"] = self.best_tracker.best()
 
-        lrs_dict = {f"lr/pg_{i}":group['lr'] for i, group in enumerate(self.optimizer.param_groups)}
+        lrs_dict = {
+            f"lr/pg_{i}": group["lr"]
+            for i, group in enumerate(self.optimizer.param_groups)
+        }
         if self.conf.experiment.use_wandb:
             wandb.log(
                 {

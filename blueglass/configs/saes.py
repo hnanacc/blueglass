@@ -31,8 +31,8 @@ from typing import List, Optional
 @dataclass
 class SAEVariantConf(SAEConf):
     variant: SAEVariant = SAEVariant.TOPK_FAST
-    loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
     topk: int = 32
+    # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
 
 
 @dataclass
@@ -40,7 +40,7 @@ class SAERunnerConf(RunnerConf):
     name: Runner = Runner.SAE
     mode: RunnerMode = RunnerMode.TRAIN
     lr: Optional[float] = field(default_factory=lambda: None)
-    warmup_steps: int = 20
+    warmup_steps: int = 5
     eps: float = 1e-8
     precision: Precision = Precision.BFLOAT16
 

@@ -110,7 +110,7 @@ def build_custom_train_loader(
     num_datasets=1,  # 2
     multi_dataset_grouping=False,  # True
     use_diff_bs_size=False,  # True
-    dataset_bs=[]  # [8, 32]
+    dataset_bs=[],  # [8, 32]
 ):
     """
     Modified from detectron2.data.build.build_custom_train_loader, but supports

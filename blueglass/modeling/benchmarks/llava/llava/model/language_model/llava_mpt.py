@@ -118,7 +118,7 @@ class LlavaMptForCausalLM(MptForCausalLM, LlavaMetaForCausalLM):
             input_ids,
             past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
-            **kwargs
+            **kwargs,
         )
         _inputs["images"] = images
         return _inputs

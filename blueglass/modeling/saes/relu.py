@@ -47,7 +47,7 @@ class ReLU(AutoEncoder):
             - extra_dense_pct / dead_pct / min_dead_pct: density and dead neuron stats
             - extra_feature_seen_count: how many features have been seen (for bookkeeping)
         """
-        
+
         loss_sparsity = self._loss_sparsity(interims)
         loss_reconstr = self._loss_reconstr(true_features, pred_features)
 

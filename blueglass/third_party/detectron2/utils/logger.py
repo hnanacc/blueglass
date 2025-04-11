@@ -51,7 +51,7 @@ def setup_logger(
     name="detectron2",
     abbrev_name=None,
     enable_propagation: bool = False,
-    configure_stdout: bool = True
+    configure_stdout: bool = True,
 ):
     """
     Initialize the detectron2 logger and set its verbosity level to "DEBUG".

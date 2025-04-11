@@ -39,7 +39,7 @@ class FastRCNNConvFCHead(nn.Sequential):
         *,
         conv_dims: List[int],
         fc_dims: List[int],
-        conv_norm=""
+        conv_norm="",
     ):
         """
         NOTE: this interface is experimental.

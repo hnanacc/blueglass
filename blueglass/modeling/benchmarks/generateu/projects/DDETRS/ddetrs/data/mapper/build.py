@@ -162,7 +162,7 @@ def build_detection_train_loader(
     total_batch_size,
     aspect_ratio_grouping=True,
     num_workers=0,
-    use_mixup=False
+    use_mixup=False,
 ):
     """
     Build a dataloader for object detection with some default features.

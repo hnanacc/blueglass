@@ -237,7 +237,7 @@ class RunnerConf:
     name: Runner = Runner.BENCHMARK
     mode: RunnerMode = RunnerMode.TEST
 
-    max_steps: int = 50_000
+    max_steps: int = 6_000
     logs_period: int = 1
     eval_period: int = 100
     patch_eval_period: int = 200
@@ -254,9 +254,7 @@ class RunnerConf:
     precision: Precision = Precision.BFLOAT16
 
     scheduler: Scheduler = Scheduler.MULTISTEP
-    milestones: List[int] = field(
-        default_factory=lambda: [40_000, 45_000, 49_000]
-    )
+    milestones: List[int] = field(default_factory=lambda: [40_000, 45_000, 49_000])
 
 
 @dataclass
@@ -279,8 +277,8 @@ class SAEConf:
 
     threshold_top_latents: float = 0.5
     threshold_update_rate: float = 0.01
-    threshold_latents_dead: int = 1_000_000
-    min_threshold_latents_dead: int = 1_00_000
+    threshold_latents_dead: int = 1_00_000
+    min_threshold_latents_dead: int = 10_000
     threshold_latents_dense: float = 0.5
 
 
