@@ -8,12 +8,23 @@ from torch import Tensor, nn
 from blueglass.runners.runner import Runner
 from typing import Dict, Any, List, Tuple
 from collections import defaultdict
-
+from blueglass.configs import BLUEGLASSConf
+from blueglass.modeling.build import build_model
+from blueglass.third_party.detectron2.engine import create_ddp_model
 
 logger = setup_blueglass_logger(__name__)
 
 
-class BenchmarkRunner(Runner):
+class ModelstoreRunner(Runner):
+    
+    def build_model(self, conf: BLUEGLASSConf) -> nn.Module:
+        model = build_model(conf)
+        """
+        Freeze the model according to your need
+        """
+        model = create_ddp_model(model)
+        return model
+        
     def process_records(
         self, gathered_records: List[Dict[str, Any]]
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -64,3 +75,4 @@ class BenchmarkRunner(Runner):
 
     def infer(self):
         raise NotImplementedError("infer is not supported for this runner.")
+

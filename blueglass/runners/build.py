@@ -4,7 +4,8 @@
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from blueglass.configs import BLUEGLASSConf, Runner as RunnerType
 from .runner import Runner
-from .benchmark import BenchmarkRunner
+from .modelstore import ModelstoreRunner
+from .finetune import FineTuneRunner
 from .layers_patch import LayersPatchRunner
 from .features_extract import FeatureExtractRunner
 from .probes_linear_vlm import VLMLinearProbeRunner
@@ -16,7 +17,7 @@ logger = setup_blueglass_logger(__name__)
 
 def build_runner(conf: BLUEGLASSConf) -> Runner:
     runner_classes = {
-        RunnerType.BENCHMARK: BenchmarkRunner,
+        RunnerType.MODELSTORE: ModelstoreRunner,
         RunnerType.FEATURE_EXTRACT: FeatureExtractRunner,
         RunnerType.VLM_LINEAR_PROBE: VLMLinearProbeRunner,
         RunnerType.SAE_LINEAR_PROBE: SAELinearProbeRunner,

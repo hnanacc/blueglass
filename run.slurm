@@ -24,8 +24,8 @@ export CUDA_VISIBLE_DEVICES=$(seq -s, 0 $((WORLD_SIZE-1)))
 export CUDA_VISIBLE_DEVICES=0,1
 export DATASET_DIR="/nwstore/datasets"
 export WEIGHTS_DIR="/nwstore/weights"
-# export FEATURE_DIR="/nwstore/harshal/blue_lens"
-export FEATURE_DIR="/nwstore/blueglass/blue_lens_extract"
+# export FEATURE_DIR="/nwstore/harshal/bluelens"
+export FEATURE_DIR="/nwstore/blueglass/bluelens_extract"
 
 
 # -------------------------------------

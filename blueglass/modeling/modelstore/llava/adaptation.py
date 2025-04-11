@@ -59,10 +59,10 @@ class LLaVA(nn.Module):
     def __init__(self, args):
         super().__init__()
 
-        from blueglass.modeling.benchmarks.llava.llava.model.builder import (
+        from blueglass.modeling.modelstore.llava.llava.model.builder import (
             load_pretrained_model,
         )
-        from blueglass.modeling.benchmarks.llava.llava.constants import (
+        from blueglass.modeling.modelstore.llava.llava.constants import (
             DEFAULT_IMAGE_TOKEN,
             IMAGE_TOKEN_INDEX,
         )
@@ -89,7 +89,7 @@ class LLaVA(nn.Module):
         self.instr = self.prepare_conversation()
 
     def prepare_conversation(self):
-        from blueglass.modeling.benchmarks.llava.llava.conversation import (
+        from blueglass.modeling.modelstore.llava.llava.conversation import (
             conv_templates,
         )
 
@@ -122,7 +122,7 @@ class LLaVA(nn.Module):
         return self.postprocess(batched_inputs, batched_outputs)
 
     def preprocess(self, bi: Dict):
-        from blueglass.modeling.benchmarks.llava.llava.mm_utils import (
+        from blueglass.modeling.modelstore.llava.llava.mm_utils import (
             process_images,
             tokenizer_image_token,
         )

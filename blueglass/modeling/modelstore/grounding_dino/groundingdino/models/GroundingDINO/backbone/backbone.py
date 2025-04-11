@@ -27,7 +27,7 @@ import torchvision
 from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     NestedTensor,
     is_main_process,
 )

@@ -283,16 +283,16 @@ class AutoEncoder(nn.Module):
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _min_dead_pct(self) -> Tensor:
+        latents = self.latents_dead_since
         chunk_min_dead_pct = self._chunked_reduce(
-            tensor=self.latents_dead_since,
+            tensor=latents,
             row_fn=lambda chunk: (chunk > self.min_threshold_dead).sum(),
             chunk_size=ROW_CHUNK_SIZE,
         )
+
         min_dead_pct = (
-            chunk_min_dead_pct.float()
-            / self._to_like(
-                torch.tensor(self.feature_seen_count), self.latents_fire_count
-            )
+            self._to_like(torch.tensor(chunk_min_dead_pct), latents)
+            / self._to_like(torch.tensor(self.latents_dim), latents)
         ) * 100
         return min_dead_pct
 

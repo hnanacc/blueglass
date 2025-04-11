@@ -11,17 +11,17 @@ from PIL import Image
 from torchvision.ops import box_convert
 import bisect
 
-import blueglass.modeling.benchmarks.grounding_dino.groundingdino.datasets.transforms as T
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.models import (
+import blueglass.modeling.modelstore.grounding_dino.groundingdino.datasets.transforms as T
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.models import (
     build_model,
 )
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     clean_state_dict,
 )
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.slconfig import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.slconfig import (
     SLConfig,
 )
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.utils import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.utils import (
     get_phrases_from_posmap,
 )
 

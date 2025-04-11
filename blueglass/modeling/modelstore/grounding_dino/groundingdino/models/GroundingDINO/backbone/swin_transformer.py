@@ -21,7 +21,7 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     NestedTensor,
 )
 

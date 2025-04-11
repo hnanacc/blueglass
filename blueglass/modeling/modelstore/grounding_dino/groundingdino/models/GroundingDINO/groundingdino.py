@@ -24,10 +24,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util import (
     get_tokenlizer,
 )
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     NestedTensor,
     inverse_sigmoid,
     nested_tensor_from_tensor_list,

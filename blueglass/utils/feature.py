@@ -24,7 +24,7 @@ REMOTE = "IntelLabs/BlueLens"
 def _download_features_from_hf(
     model: str,
     dataset: str,
-    base_path: str = "blue_lens_hf_dataset",
+    base_path: str = "bluelens_hf_dataset",
     layer_id: Optional[int] = None,
     pattern: Optional[str] = None,
     subpattern: Optional[str] = None,
@@ -37,7 +37,7 @@ def _download_features_from_hf(
     - repo_id (str): Hugging Face dataset repo ID.
     - model (str): Model name (e.g., 'gdino').
     - dataset (str): Dataset name (e.g., 'coco_mini').
-    - base_path (str, optional): Base directory for downloading. Default: "blue_lens_hf_dataset".
+    - base_path (str, optional): Base directory for downloading. Default: "bluelens_hf_dataset".
     - layer_id (int, optional): Layer ID to filter files. Default: None.
     - pattern (str, optional): File pattern to match. Default: None.
     - subpattern (str, optional): Additional subpattern for finer filtering. Default: None.

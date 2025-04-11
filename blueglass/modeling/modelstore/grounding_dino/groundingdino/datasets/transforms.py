@@ -13,10 +13,10 @@ import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.box_ops import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.box_ops import (
     box_xyxy_to_cxcywh,
 )
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     interpolate,
 )
 

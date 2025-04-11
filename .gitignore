@@ -83,10 +83,10 @@ runs
 weights
 
 # benchmark specific
-blueglass/modeling/benchmarks/generateu/build
-blueglass/modeling/benchmarks/generateu/projects/DDETRS/ddetrs/models/deformable_detr/ops/build
-blueglass/modeling/benchmarks/generateu/projects/DDETRS/ddetrs/models/deformable_detr/ops/dist
-blueglass/modeling/benchmarks/grounding_dino/build
+blueglass/modeling/modelstore/generateu/build
+blueglass/modeling/modelstore/generateu/projects/DDETRS/ddetrs/models/deformable_detr/ops/build
+blueglass/modeling/modelstore/generateu/projects/DDETRS/ddetrs/models/deformable_detr/ops/dist
+blueglass/modeling/modelstore/grounding_dino/build
 
 blueglass/third_party/mmdet
 blueglass/third_party/coco

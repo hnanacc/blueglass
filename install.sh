@@ -24,7 +24,7 @@ fi
 
 
 export PROJECT_ROOT=$PWD
-export BENCHMARK_ROOT="$PROJECT_ROOT/blueglass/modeling/benchmarks"
+export BENCHMARK_ROOT="$PROJECT_ROOT/blueglass/modeling/modelstore"
 export THIRD_PARTY_ROOT="$PROJECT_ROOT/blueglass/third_party"
 
 # Create micromamba env

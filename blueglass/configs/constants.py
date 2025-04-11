@@ -7,8 +7,8 @@ from typing import List, Tuple
 from .defaults import Dataset, Evaluator
 
 WEIGHTS_DIR = os.environ.get("WEIGHTS_DIR", os.path.join(os.getcwd(), "weights"))
-FEATURE_DIR = os.environ.get("FEATURE_DIR", osp.join(os.getcwd(), "blue_lens"))
-BENCHMARKS_DIR = osp.join(os.getcwd(), "blueglass", "modeling", "benchmarks")
+FEATURE_DIR = os.environ.get("FEATURE_DIR", osp.join(os.getcwd(), "bluelens"))
+MODELSTORE_DIR = osp.join(os.getcwd(), "blueglass", "modeling", "modelstore")
 
 DATASETS_AND_EVALS: List[Tuple[str, Dataset, Dataset, Evaluator]] = [
     (

@@ -27,7 +27,7 @@ import math
 import torch
 from torch import nn
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     NestedTensor,
 )
 

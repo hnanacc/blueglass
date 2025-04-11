@@ -3,11 +3,11 @@
 
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from torch import nn
-from .benchmarks.yolo.adaptation import YOLO_X
-from .benchmarks.grounding_dino.adaptation import GroundingDINO
-from .benchmarks.generateu.adaptation import GenerateU
-from .benchmarks.mmdet import MMDetModel
-from .benchmarks.huggingface import (
+from .modelstore.yolo.adaptation import YOLO_X
+from .modelstore.grounding_dino.adaptation import GroundingDINO
+from .modelstore.generateu.adaptation import GenerateU
+from .modelstore.mmdet import MMDetModel
+from .modelstore.huggingface import (
     PaliGemma2,
     Florence,
     IDEFICS2,
@@ -17,7 +17,7 @@ from .benchmarks.huggingface import (
     Phi3,
     DeepSeekVL,
 )
-from .benchmarks.closed_source import Gemini, GPT4oMini, Claude
+from .modelstore.closed_source import Gemini, GPT4oMini, Claude
 from blueglass.configs import BLUEGLASSConf, Model
 
 logger = setup_blueglass_logger(__name__)

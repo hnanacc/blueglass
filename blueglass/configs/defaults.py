@@ -89,7 +89,7 @@ class Evaluator(str, Enum):
 
 
 class Runner(str, Enum):
-    BENCHMARK = "benchmark"
+    MODELSTORE = "modelstore"
     LAYERS_PATCH = "layers_patch"
     FEATURE_EXTRACT = "feature_extract"
     VLM_LINEAR_PROBE = "vlm_linear_probe"

@@ -23,7 +23,7 @@ from .defaults import (
     FeaturePattern,
     FeatureSubPattern,
 )
-from .constants import WEIGHTS_DIR, BENCHMARKS_DIR, FEATURE_DIR, DATASETS_AND_EVALS
+from .constants import WEIGHTS_DIR, MODELSTORE_DIR, FEATURE_DIR, DATASETS_AND_EVALS
 
 from typing import List, Optional
 
@@ -40,7 +40,7 @@ class SAERunnerConf(RunnerConf):
     name: Runner = Runner.SAE
     mode: RunnerMode = RunnerMode.TRAIN
     lr: Optional[float] = field(default_factory=lambda: None)
-    warmup_steps: int = 5
+    warmup_steps: int = 1
     eps: float = 1e-8
     precision: Precision = Precision.BFLOAT16
 
@@ -65,7 +65,7 @@ class SAEFeatureConf(FeatureConf):
         ]
     )
     use_cached: bool = True
-    batch_size: int = 65536
+    batch_size: int = 5000
 
 
 def register_saes():
@@ -80,7 +80,7 @@ def register_saes():
                 model=ModelConf(
                     name=Model.DINO,
                     conf_path=osp.join(
-                        BENCHMARKS_DIR, "mmbench", "configs", f"dino_{ds_name}.py"
+                        MODELSTORE_DIR, "mmbench", "configs", f"dino_{ds_name}.py"
                     ),
                     checkpoint_path=osp.join(
                         WEIGHTS_DIR, "dino", f"finetuned_dino_{ds_name}.pt"
@@ -101,7 +101,7 @@ def register_saes():
                 model=ModelConf(
                     name=Model.GDINO,
                     conf_path=osp.join(
-                        BENCHMARKS_DIR,
+                        MODELSTORE_DIR,
                         "grounding_dino",
                         "groundingdino",
                         "config",
@@ -126,7 +126,7 @@ def register_saes():
                 model=ModelConf(
                     name=Model.GENU,
                     conf_path=osp.join(
-                        BENCHMARKS_DIR,
+                        MODELSTORE_DIR,
                         "generateu",
                         "projects",
                         "DDETRS",

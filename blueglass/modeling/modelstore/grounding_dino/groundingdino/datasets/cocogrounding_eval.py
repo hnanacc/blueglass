@@ -26,7 +26,7 @@ import torch
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     all_gather,
 )
 

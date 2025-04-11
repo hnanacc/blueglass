@@ -20,7 +20,7 @@ from .defaults import (
     InterceptMode as InterceptMode,
 )
 from .utils import to_dict
-from .benchmark import register_benchmarks
+from .modelstore import register_modelstores
 from .features import register_features
 from .probes import register_probes
 from .saes import register_saes
@@ -40,7 +40,7 @@ def register_all():
         except Exception as e:
             logger.warning(f"Failed to register {name} Hydra based config: {e}")
 
-    safe_register(register_benchmarks, "Benchmarks")
+    safe_register(register_modelstores, "Modelstore")
     safe_register(register_features, "Features")
     safe_register(register_probes, "Probes")
     safe_register(register_saes, "SAEs")

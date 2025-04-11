@@ -25,7 +25,7 @@ import torch.utils.checkpoint as checkpoint
 from torch import Tensor, nn
 from typing import Optional, Tuple
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.misc import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.misc import (
     inverse_sigmoid,
 )
 

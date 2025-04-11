@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer
 
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.slconfig import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.slconfig import (
     SLConfig,
 )
 

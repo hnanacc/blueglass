@@ -58,6 +58,7 @@ class MMDetModel(nn.Module):
             ):
                 logger.info("Reinitialized DINO class branches.")
                 for mod in model.bbox_head.cls_branches:
+                    ## initialising the bias similar to bias from COCO checkpoint
                     torch.nn.init.constant_(mod.bias, -4.59511985013459)
                     torch.nn.init.kaiming_uniform_(mod.weight)
 

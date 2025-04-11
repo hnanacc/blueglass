@@ -25,7 +25,7 @@ from .defaults import (
 )
 from .constants import (
     WEIGHTS_DIR,
-    BENCHMARKS_DIR,
+    MODELSTORE_DIR,
     FEATURE_DIR,
     DATASETS_AND_EVALS,
 )
@@ -69,7 +69,7 @@ def register_probes():
                     model=ModelConf(
                         name=Model.DINO,
                         conf_path=osp.join(
-                            BENCHMARKS_DIR, "mmbench", "configs", f"dino_{ds_name}.py"
+                            MODELSTORE_DIR, "mmbench", "configs", f"dino_{ds_name}.py"
                         ),
                         checkpoint_path=osp.join(
                             WEIGHTS_DIR, "dino", f"finetuned_dino_{ds_name}.pt"
@@ -92,7 +92,7 @@ def register_probes():
                     model=ModelConf(
                         name=Model.GDINO,
                         conf_path=osp.join(
-                            BENCHMARKS_DIR,
+                            MODELSTORE_DIR,
                             "grounding_dino",
                             "groundingdino",
                             "config",
@@ -119,7 +119,7 @@ def register_probes():
                     model=ModelConf(
                         name=Model.GENU,
                         conf_path=osp.join(
-                            BENCHMARKS_DIR,
+                            MODELSTORE_DIR,
                             "generateu",
                             "projects",
                             "DDETRS",

@@ -10,7 +10,7 @@ from torch import nn
 from torchvision import transforms as T
 from blueglass.third_party.detectron2.data import MetadataCatalog as MC
 from blueglass.third_party.detectron2.structures import Instances, Boxes, BoxMode
-from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.vl_utils import (
+from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.vl_utils import (
     build_captions_and_token_span,
     create_positive_map_from_span,
 )
@@ -24,7 +24,7 @@ logger = setup_blueglass_logger("blueglass")
 class GroundingDINO(nn.Module):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__()
-        from blueglass.modeling.benchmarks.grounding_dino.groundingdino.util.inference import (
+        from blueglass.modeling.modelstore.grounding_dino.groundingdino.util.inference import (
             load_model,
         )
 
