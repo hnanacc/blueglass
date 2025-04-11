@@ -126,7 +126,10 @@ class FeatureSubPattern(str, Enum):
 
 
 class SAEVariant(str, Enum):
-    RELU = "relu"
+    """
+    For Relu: Sparsity loss coeff=0.01
+    """
+    RELU = "relu" 
     TOPK = "topk"
     TOPK_FAST = "topk_fast"
     MATRYOSHKA = "matryoshka"
@@ -271,7 +274,7 @@ class SAEConf:
     latents_topk_aux: int = 512
     group_multipliers: List[float] = field(default_factory=lambda: [1, 1, 2, 4, 8])
 
-    loss_sparsity_coeff: float = 0.01
+    loss_sparsity_coeff: float = 0.0
     loss_reconstr_coeff: float = 1.0
     loss_topk_aux_coeff: float = 1 / 32
 
