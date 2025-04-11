@@ -94,7 +94,7 @@ class SAERunner(Runner):
         return (
             conf.runner.lr
             if conf.runner.lr is not None
-            else 2e-4 / ((module.latents_dim / 2**14) ** 0.5)
+            else 1e-4 / ((module.latents_dim / 2**14) ** 0.5)
         )
 
     def build_optimizer(
