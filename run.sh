@@ -48,7 +48,7 @@ SAE_VARIANT=TOPK_FAST
 DATASET="COCO"
 EXPERIMENT_NAME="sae.gdino.${DATASET}_train_${SAE_VARIANT}_B${BATCH_SIZE}"
 python launch.py \
-    --config-name features.gdino.coco \
+    --config-name saes.gdino.coco \
     experiment.use_wandb=False \
     num_gpus=$WORLD_SIZE \
     dataset.infer=COCO_MINI \
