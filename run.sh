@@ -24,7 +24,7 @@ source "$MAMBA_PATH/etc/profile.d/mamba.sh"
 
 if command -v micromamba &> /dev/null; then
     echo "✅ micromamba version: $(micromamba --version)"
-then
+else
     echo "No environment manager not found. Cannot proceed."
     exit 1
 fi
