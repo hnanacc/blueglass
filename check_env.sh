@@ -23,10 +23,6 @@ export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
-## Specify the path of your installed mamba
-MAMBA_PATH=~/micromamba
-source "$MAMBA_PATH/etc/profile.d/mamba.sh"
-
 echo "🖥️  Checking OS..."
 if [[ "$(uname)" == "Linux" ]]; then
     echo "✅ Linux environment detected."
@@ -99,6 +95,11 @@ else
     echo "✅ All required dependencies are installed."
 fi
 
+
+## Specify the path of your installed mamba
+MAMBA_PATH=~/micromamba
+source "$MAMBA_PATH/etc/profile.d/mamba.sh"
+
 echo ""
 echo "📦 Checking micromamba..."
 if command -v micromamba &> /dev/null; then
@@ -106,8 +107,13 @@ if command -v micromamba &> /dev/null; then
 else
     echo "❌  micromamba not found.  Installing..."
     echo "" | "${SHELL}" <(curl -L "micro.mamba.pm/install.sh")
-    export PATH=$PATH:$HOME/.local/bin >> $HOME/.bashrc
+    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    export MAMBA_ROOT_PREFIX=$HOME/micromamba
+    eval "$(./bin/micromamba shell hook -s posix)"
+    ./bin/micromamba shell init -s bash -r ~/micromamba
     source $HOME/.bashrc
+    MAMBA_PATH=$HOME/micromamba
+    source "$MAMBA_PATH/etc/profile.d/mamba.sh"
     echo "✅ micromamba $(micromamba --version) installed."
 fi
 

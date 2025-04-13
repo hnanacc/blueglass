@@ -24,7 +24,7 @@ source "$MAMBA_PATH/etc/profile.d/mamba.sh"
 
 if command -v micromamba &> /dev/null; then
     echo "✅ micromamba version: $(micromamba --version)"
-then
+else
     echo "No environment manager not found. Cannot proceed."
     exit 1
 fi
@@ -48,7 +48,7 @@ SAE_VARIANT=TOPK_FAST
 DATASET="COCO"
 EXPERIMENT_NAME="sae.gdino.${DATASET}_train_${SAE_VARIANT}_B${BATCH_SIZE}"
 python launch.py \
-    --config-name features.gdino.coco \
+    --config-name saes.gdino.coco \
     experiment.use_wandb=False \
     num_gpus=$WORLD_SIZE \
     dataset.infer=COCO_MINI \
