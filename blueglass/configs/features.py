@@ -76,7 +76,7 @@ def register_features():
                         f"dino-4scale_r50_improved_8xb2-12e_{ds_name}.py",
                     ),
                     checkpoint_path=osp.join(
-                        WEIGHTS_DIR,  "mmdet",  "dinodetr", f"dinodetr_{ds_name}.pt"
+                        WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
@@ -97,7 +97,9 @@ def register_features():
                         "detr",
                         f"detr_r50_8xb2-150e_{ds_name}.py",
                     ),
-                    checkpoint_path=osp.join(WEIGHTS_DIR,  "mmdet",  "detr",  f"detr{ds_name}.pt"),
+                    checkpoint_path=osp.join(
+                        WEIGHTS_DIR, "mmdet", "detr", f"detr{ds_name}.pt"
+                    ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
                 feature=ExtractFeatureConf(),

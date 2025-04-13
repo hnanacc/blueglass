@@ -8,6 +8,7 @@ from ..types import DistFormat
 
 from .gdino import GDINOProcessor
 from .dino_detr import DINOProcessor
+from .detr import DETRProcessor
 from .genu import GENUProcessor
 from .florence import FlorenceProcessor
 
@@ -38,7 +39,8 @@ def _prepare_sequence_processor(
     return {
         Model.GDINO: GDINOProcessor,
         Model.GENU: GENUProcessor,
-        Model.DINO: DINOProcessor,
+        Model.DINO_DETR: DINOProcessor,
+        Model.DETR: DETRProcessor,
         Model.FLORENCE: FlorenceProcessor,
     }[conf.model.name](conf)
 

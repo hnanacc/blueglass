@@ -29,7 +29,7 @@ MMDET_SCOPE = "mmdet"
 class MMDetModel(nn.Module):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__()
-        
+
         self.conf = conf
         self.device = DEVICE
         init_default_scope(MMDET_SCOPE)
@@ -73,7 +73,7 @@ class MMDetModel(nn.Module):
         revise_key = [(r"^module\.", ""), (r"^model\.", "")]
         checkpoint = _load_checkpoint(path, DEVICE)
         _load_checkpoint_to_model(model, checkpoint, revise_keys=revise_key)
-        
+
         return revert_sync_batchnorm(model)
 
     def _prepare_mm_pipelines(

@@ -75,7 +75,7 @@ def register_probes():
                             f"dino-4scale_r50_improved_8xb2-12e_{ds_name}.py",
                         ),
                         checkpoint_path=osp.join(
-                            WEIGHTS_DIR,  "mmdet",  "dinodetr", f"dinodetr_{ds_name}.pt"
+                            WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                         ),
                     ),
                     evaluator=EvaluatorConf(name=ev, use_multi_layer=True),
@@ -104,7 +104,7 @@ def register_probes():
                             f"detr_r50_8xb2-150e_{ds_name}.py",
                         ),
                         checkpoint_path=osp.join(
-                            WEIGHTS_DIR,  "mmdet",  "detr",  f"detr_{ds_name}.pt"
+                            WEIGHTS_DIR, "mmdet", "detr", f"detr_{ds_name}.pt"
                         ),
                     ),
                     evaluator=EvaluatorConf(name=ev, use_multi_layer=True),
