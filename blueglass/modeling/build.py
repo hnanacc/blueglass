@@ -28,7 +28,8 @@ def build_model(conf: BLUEGLASSConf) -> nn.Module:
         Model.YOLO: YOLO_X,
         Model.GDINO: GroundingDINO,
         Model.GENU: GenerateU,
-        Model.DINO: MMDetModel,
+        Model.DINO_DETR: MMDetModel,
+        Model.DETR: MMDetModel,
         Model.PALIGEMMA: PaliGemma2,
         Model.FLORENCE: Florence,
         Model.IDEFICS: IDEFICS2,
@@ -48,5 +49,5 @@ def build_model(conf: BLUEGLASSConf) -> nn.Module:
 
     logger.debug(f"Building the model {conf.model.name}.")
     model = model_class(conf)
-    logger.info(f"Successfully registered model {conf.model.name}.")
+    logger.info(f"Successfully built the model {conf.model.name}.")
     return model

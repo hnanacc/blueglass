@@ -12,7 +12,7 @@ from mmdet.structures import DetDataSample
 from mmengine.config import Config as MMDetConfs
 from mmengine.runner.checkpoint import _load_checkpoint, _load_checkpoint_to_model
 from mmengine.model.utils import revert_sync_batchnorm
-from mmdet.models.dense_heads import DINOHead
+from mmdet.models.dense_heads import DINOHead, DETRHead
 from mmengine.dataset import Compose
 from mmdet.registry import MODELS
 from blueglass.configs import BLUEGLASSConf, RunnerMode, Runner
@@ -29,11 +29,13 @@ MMDET_SCOPE = "mmdet"
 class MMDetModel(nn.Module):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__()
+        
+        self.conf = conf
         self.device = DEVICE
         init_default_scope(MMDET_SCOPE)
 
         self.mm_confs = self._prepare_mm_confs(conf)
-        self.mm_model = self._prepare_mm_model(conf, self.mm_confs)
+        self.model = self._prepare_mm_model(conf, self.mm_confs)
         self.train_pipeline, self.test_pipeline = self._prepare_mm_pipelines(
             self.mm_confs
         )
@@ -52,7 +54,7 @@ class MMDetModel(nn.Module):
             model = self._with_checkpoint(conf.model.checkpoint_path, model)
 
             if (
-                conf.runner.name is Runner.BENCHMARK
+                conf.runner.name is Runner.MODELSTORE
                 and conf.runner.mode is RunnerMode.TRAIN
                 and isinstance(model.bbox_head, DINOHead)
             ):
@@ -70,9 +72,9 @@ class MMDetModel(nn.Module):
     def _with_checkpoint(self, path: str, model: nn.Module):
         revise_key = [(r"^module\.", ""), (r"^model\.", "")]
         checkpoint = _load_checkpoint(path, DEVICE)
-        return revert_sync_batchnorm(
-            _load_checkpoint_to_model(model, checkpoint, revise_keys=revise_key)
-        )
+        _load_checkpoint_to_model(model, checkpoint, revise_keys=revise_key)
+        
+        return revert_sync_batchnorm(model)
 
     def _prepare_mm_pipelines(
         self, mm_confs: MMDetConfs, ignore_transforms: List[str] = []
