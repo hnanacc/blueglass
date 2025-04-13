@@ -135,9 +135,15 @@ class Processor:
             case (
                 FeaturePattern.DET_DECODER_RESID_MLP
                 | FeaturePattern.DET_DECODER_RESID_MHA
+                | FeaturePattern.DET_DECODER_SA_RESID_MHA
+                | FeaturePattern.DET_DECODER_CA_RESID_MHA
             ):
                 result = self.process_det_decoder_resid(recorder, std_io)
-            case FeaturePattern.DET_DECODER_MHA:
+            case (
+                FeaturePattern.DET_DECODER_MHA
+                | FeaturePattern.DET_DECODER_SA_MHA
+                | FeaturePattern.DET_DECODER_CA_MHA
+            ):
                 result = self.process_det_decoder_mha(recorder, std_io)
             case FeaturePattern.DET_DECODER_MLP:
                 result = self.process_det_decoder_mlp(recorder, std_io)

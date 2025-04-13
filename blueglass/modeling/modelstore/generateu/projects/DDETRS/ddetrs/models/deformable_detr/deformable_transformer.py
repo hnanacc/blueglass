@@ -548,15 +548,18 @@ class DeformableTransformerDecoder(nn.Module):
         super().__init__()
         self.layers = _get_clones(decoder_layer, num_layers)
 
-        for layer_index, dec in enumerate(self.layers):
-            dec.layer_index = layer_index
-
         self.num_layers = num_layers
         self.return_intermediate = return_intermediate
         # hack implementation for iterative bounding box refinement and two-stage Deformable DETR
         self.bbox_embed = None
         self.class_embed = None
 
+        """
+        Added layer index to be later used by blueglass interceptors
+        """
+        for layer_index, dec in enumerate(self.layers):
+            dec.layer_index = layer_index
+            
     def forward(
         self,
         tgt,

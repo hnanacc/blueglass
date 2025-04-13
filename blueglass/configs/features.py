@@ -53,6 +53,8 @@ class ExtractFeatureConf(FeatureConf):
             FeaturePattern.DET_DECODER_RESID_MLP,
             FeaturePattern.DET_DECODER_MLP,
             FeaturePattern.DET_DECODER_RESID_MHA,
+            FeaturePattern.DET_DECODER_CA_RESID_MHA,
+            FeaturePattern.DET_DECODER_SA_RESID_MHA,
             # FeaturePattern.DET_DECODER_MHA,
             FeaturePattern.IO,
         ]

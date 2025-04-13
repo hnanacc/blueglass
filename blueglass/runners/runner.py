@@ -297,6 +297,7 @@ class Runner:
 
     def infer(self):
         self.dataloader = self.build_infer_dataloader(self.conf)
+        self.model.eval()
         for self.step, data in enumerate(self.dataloader):
             records_dict = self.run_step(data)
 

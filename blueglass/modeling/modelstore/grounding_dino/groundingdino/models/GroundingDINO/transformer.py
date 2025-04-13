@@ -20,6 +20,7 @@
 
 from typing import Optional, Dict, Any
 
+import numpy as np
 import torch
 import torch.utils.checkpoint as checkpoint
 from torch import Tensor, nn
@@ -47,7 +48,7 @@ ADD INFORMATION ABOUT THE BLUEGLASS FEATURE USAGE HERE
 from blueglass.features import intercept_manager
 from blueglass.configs import FeaturePattern, FeatureSubPattern
 from blueglass.configs.defaults import BLUEGLASSConf
-import numpy as np
+
 
 
 class Transformer(nn.Module):
@@ -805,9 +806,6 @@ class TransformerDecoder(nn.Module):
         else:
             self.layers = []
 
-        for layer_index, dec in enumerate(self.layers):
-            dec.layer_index = layer_index
-
         self.num_layers = num_layers
         self.norm = norm
         self.return_intermediate = return_intermediate
@@ -826,6 +824,12 @@ class TransformerDecoder(nn.Module):
         self.d_model = d_model
 
         self.ref_anchor_head = None
+
+        """
+        Added layer index to be later used by blueglass interceptors
+        """
+        for layer_index, dec in enumerate(self.layers):
+            dec.layer_index = layer_index
 
     def forward(
         self,
@@ -1074,11 +1078,10 @@ class DeformableTransformerDecoderLayer(nn.Module):
         n_heads=8,
         n_points=4,
         use_text_feat_guide=False,
-        use_text_cross_attention=False,
-        layer_index: int = None,
+        use_text_cross_attention=False
     ):
         super().__init__()
-        self.layer_index = layer_index
+        self.layer_index = None
 
         # cross attention
         self.cross_attn = MSDeformAttn(
@@ -1134,7 +1137,9 @@ class DeformableTransformerDecoderLayer(nn.Module):
         assert self.layer_index is not None, "layer_index not set."
         layer_name = f"layer_{self.layer_index}"
 
-        # DOCUMENT BLUEGLASS FEATURE HERE and repeat on all additions.
+        """
+        BlueGlass Recorder and Patcher
+        """
         intercept_manager().recorder(FeaturePattern.DET_DECODER_MLP).record(
             layer_name,
             {
@@ -1181,19 +1186,12 @@ class DeformableTransformerDecoderLayer(nn.Module):
         assert memory is not None, "expected memory."
         assert blueglass_kwargs is not None, "blueglass_kwargs are None."
 
-        base_path = "./SAE_RESULTS/SAE_RESULTS_w_bias/sae_result_conc_circ/L{}/L{}_EF{}/knockoff_filtered_data_points/tsne_rows_concentric_circles/indices_0_{}.npy"
-        expansion_factor = 256
-        circle_index = 50
-        ## w bias
-        # circle_indices = {0:90, 1:90, 2:50, 3:90, 4:50, 5:90}
-        # circle_indices = {0:90, 1:50, 2:50, 3:50, 4:50, 5:50}
-        ## wo bias
-        # circle_indices = {0:90, 1:50, 2:90, 3:75, 4:75, 5:50}
-
-        # knockoff_config = {0: False, 1: False, 2: False, 3: False, 4: False, 5: False}
-        # add_bias        = {0: False, 1: False, 2: False, 3: False, 4: False, 5: False}
-
-        # filter_ind_knockoff = {0:L0_filter_ind_knockoff, 1:L1_filter_ind_knockoff, 2:L2_filter_ind_knockoff, 3:L3_filter_ind_knockoff, 4:L4_filter_ind_knockoff, 5:L5_filter_ind_knockoff}
+        layer_name = f"layer_{self.layer_index}"
+        """
+        Layer Knockoff experiment
+        """
+        base_path = "./SAE_RESULTS/indices.npy"
+        
         layer_knockoff_exp_config = blueglass_kwargs["blueglass_conf"][
             "layer_knock_off"
         ]
@@ -1204,17 +1202,18 @@ class DeformableTransformerDecoderLayer(nn.Module):
         reference_points = blueglass_kwargs["reference_points"].detach()
 
         layer_id = self.layer_index
-        # knockoff = True and (True if layer_knockoff_exp_config is not None else False)
-        tgt_orig = tgt
+
         knockoff_band = None
         if knockoff:
+            """
+            BlueGlass Layer Knockoff experiment
+            """
             circle_indices = layer_knockoff_exp_config.circle_indices
             circle_index = circle_indices[layer_id]
             knockoff_config = layer_knockoff_exp_config.knockoff_config
             if knockoff_config[layer_id]:
                 L_filter_ind_knockoff = np.load(
-                    base_path.format(layer_id, layer_id, expansion_factor, circle_index)
-                )
+                    base_path)
                 knockoff_band = L_filter_ind_knockoff
                 with torch.no_grad():
                     tgt[:, :, L_filter_ind_knockoff] = 0
@@ -1222,7 +1221,6 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
         # self attention
         if self.self_attn is not None:
-            # import ipdb; ipdb.set_trace()
             q = k = self.with_pos_embed(tgt, tgt_query_pos)
             tgt2, attn_pattern = self.self_attn(
                 q,
@@ -1235,8 +1233,11 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
             assert self.layer_index is not None, "layer_index not initialized."
 
-            layer_name = f"layer_{self.layer_index}"
-            intercept_manager().recorder(FeaturePattern.DET_DECODER_MHA).record(
+            
+            """
+            BlueGlass Recorder and Patcher
+            """
+            intercept_manager().recorder(FeaturePattern.DET_DECODER_SA_MHA).record(
                 layer_name,
                 {
                     "weights": attn_pattern.detach().cpu(),
@@ -1244,7 +1245,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
                 },
             )
 
-            pattern_name = FeaturePattern.DET_DECODER_MHA
+            pattern_name = FeaturePattern.DET_DECODER_SA_MHA
             subpattern_name = FeatureSubPattern.OUTPUTS
             name = f"{layer_name}.{pattern_name.value}.{subpattern_name.value}"
             tgt2 = intercept_manager().patcher(name).patch(name, tgt2)
@@ -1277,10 +1278,12 @@ class DeformableTransformerDecoderLayer(nn.Module):
         tgt = tgt + self.dropout1(tgt2)
         tgt = self.norm1(tgt)
 
-        layer_name = f"layer_{layer_id}"
-
         assert isinstance(tgt, Tensor), "unexpected type for feature."
         assert isinstance(tgt_reference_points, Tensor), "unexpected type for feature."
+        
+        """
+        BlueGlass Recorder and Patcher
+        """
         intercept_manager().recorder(FeaturePattern.DET_DECODER_RESID_MHA).record(
             layer_name,
             {
@@ -1291,12 +1294,17 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
         pattern_name = FeaturePattern.DET_DECODER_RESID_MHA
         subpattern_name = FeatureSubPattern.POS_IMG
+
         name = f"{layer_name}.{pattern_name.value}.{subpattern_name.value}"
         tgt = intercept_manager().patcher(name).patch(name, tgt)
 
         tgt = self.forward_ffn(tgt)
 
         assert isinstance(tgt, Tensor), "unexpected type for feature."
+        
+        """
+        BlueGlass Recorder and Patcher
+        """
         intercept_manager().recorder(FeaturePattern.DET_DECODER_RESID_MLP).record(
             layer_name,
             {

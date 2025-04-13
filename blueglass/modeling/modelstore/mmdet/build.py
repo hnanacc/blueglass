@@ -12,6 +12,7 @@ from mmdet.structures import DetDataSample
 from mmengine.config import Config as MMDetConfs
 from mmengine.runner.checkpoint import _load_checkpoint, _load_checkpoint_to_model
 from mmengine.model.utils import revert_sync_batchnorm
+from blueglass.third_party.detectron2.structures import Instances, Boxes, BoxMode
 from mmdet.models.dense_heads import DINOHead, DETRHead
 from mmengine.dataset import Compose
 from mmdet.registry import MODELS
@@ -19,6 +20,9 @@ from blueglass.configs import BLUEGLASSConf, RunnerMode, Runner
 from blueglass.third_party.detectron2.data import MetadataCatalog
 from blueglass.third_party.detectron2.structures import Instances, Boxes
 
+from blueglass.evaluation import compute_confusion_mask
+from blueglass.configs import BLUEGLASSConf, FeaturePattern
+from blueglass.features import intercept_manager
 
 logger = setup_blueglass_logger(__name__)
 
@@ -73,8 +77,9 @@ class MMDetModel(nn.Module):
         revise_key = [(r"^module\.", ""), (r"^model\.", "")]
         checkpoint = _load_checkpoint(path, DEVICE)
         _load_checkpoint_to_model(model, checkpoint, revise_keys=revise_key)
-
-        return revert_sync_batchnorm(model)
+        model = revert_sync_batchnorm(model)
+        model.eval()
+        return model
 
     def _prepare_mm_pipelines(
         self, mm_confs: MMDetConfs, ignore_transforms: List[str] = []
@@ -151,7 +156,40 @@ class MMDetModel(nn.Module):
     def postprocess(
         self, batched_inputs: List[Dict[str, Any]], batched_outputs: List[DetDataSample]
     ) -> List[Dict[str, Any]]:
-        return [
-            {"instances": self._mm_to_d2(bi, bo)}
-            for bi, bo in zip(batched_inputs, batched_outputs)
-        ]
+        # return [
+        #     {"instances": self._mm_to_d2(bi, bo)}
+        #     for bi, bo in zip(batched_inputs, batched_outputs)
+        # ]
+        
+        processed_batched_outputs = []
+        for bi, bo in zip(batched_inputs, batched_outputs):
+
+            new_inst = self._mm_to_d2(bi, bo)
+
+            upd_boxes = Boxes(bo.pred_instances["bboxes"])
+            assert isinstance(upd_boxes, Boxes), "unexpected conversion."
+
+            processed_batched_outputs.append(
+                {
+                    "instances": new_inst,
+                    "unprocessed_boxes": upd_boxes,
+                    "unprocessed_bxind": bo.pred_instances["bboxes"],
+                    "unprocessed_clsid": bo.pred_instances["labels"],
+                    "unprocessed_score": bo.pred_instances["scores"],
+                }
+            )
+
+        confusion_mask, pred_ious = compute_confusion_mask(
+            self.conf, batched_inputs, processed_batched_outputs
+        )
+        intercept_manager().recorder(FeaturePattern.IO).record(
+            "io",
+            {
+                "batched_inputs": batched_inputs,
+                "batched_outputs": processed_batched_outputs,
+                "confusion_mask": confusion_mask,
+                "pred_ious": pred_ious,
+            },
+        )
+
+        return processed_batched_outputs
