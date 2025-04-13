@@ -115,7 +115,7 @@ else
 fi
 
 # -----
-# Prepare MMBench environment.
+# Prepare MMDET environment.
 # -----
 MMDET_DIR="$THIRD_PARTY_ROOT/mmdet"
 rm -rf $MMDET_DIR

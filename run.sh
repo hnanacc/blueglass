@@ -11,7 +11,7 @@ export WORLD_SIZE=3
 export CUDA_VISIBLE_DEVICES=$(seq -s, 0 $((WORLD_SIZE-1)))
 
 export DATASET_DIR="/scr/Alan_Smithee/datasets"
-export WEIGHTS_DIR="/home/Alan_Smithee/github_repos/weights"
+export WEIGHTS_DIR="/scr/Alan_Smithee/weights"
 export FEATURE_DIR="/scr/Alan_Smithee/BlueLens"
 
 
