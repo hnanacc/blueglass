@@ -69,6 +69,7 @@ class Runner:
 
         self.eval_period = conf.runner.eval_period
         self.logs_period = conf.runner.logs_period
+        self.ckpt_period = conf.runner.ckpt_period
 
         assert (
             self.eval_period >= self.logs_period
@@ -282,6 +283,9 @@ class Runner:
 
             if self.step % self.logs_period == 0:
                 self.register_metrics(records_dict)
+                
+            if self.step % self.ckpt_period == 0:
+                self.checkpoint()
 
             del records_dict
             torch.cuda.empty_cache()

@@ -245,6 +245,7 @@ class RunnerConf:
     logs_period: int = 1
     eval_period: int = 100
     patch_eval_period: int = 200
+    ckpt_period: int = 100
     resume: bool = False
 
     optimizer: Optimizer = Optimizer.ADAMW
