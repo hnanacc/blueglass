@@ -23,7 +23,8 @@ from .defaults import (
 from .constants import (
     DATASETS_AND_EVALS,
     WEIGHTS_DIR,
-    MODELSTORE_DIR,
+    MODELSTORE_CONFIGS_DIR,
+    MODELSTORE_MMDET_CONFIGS_DIR,
     FEATURE_DIR,
 )
 
@@ -63,22 +64,44 @@ def register_features():
 
     for ds_name, ds_train, _, ev in DATASETS_AND_EVALS:
         cs.store(
-            f"features.dino.{ds_name}",
+            f"features.mmdet_dinodetr.{ds_name}",
             BLUEGLASSConf(
                 runner=ExtractRunnerConf(),
                 dataset=ExtractDatasetConf(infer=ds_train, label=ds_train),
                 model=ModelConf(
-                    name=Model.DINO,
+                    name=Model.DINO_DETR,
                     conf_path=osp.join(
-                        MODELSTORE_DIR, "mmbench", "configs", f"dino_{ds_name}.py"
+                        MODELSTORE_MMDET_CONFIGS_DIR,
+                        "dino",
+                        f"dino-4scale_r50_improved_8xb2-12e_{ds_name}.py",
                     ),
                     checkpoint_path=osp.join(
-                        WEIGHTS_DIR, "dino", f"finetuned_dino_{ds_name}.pt"
+                        WEIGHTS_DIR, "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
                 feature=ExtractFeatureConf(),
-                experiment=ExperimentConf(name=f"extract_dino_{ds_name}"),
+                experiment=ExperimentConf(name=f"extract_dinodetr_{ds_name}"),
+            ),
+        )
+
+        cs.store(
+            f"features.mmdet_detr.{ds_name}",
+            BLUEGLASSConf(
+                runner=ExtractRunnerConf(),
+                dataset=ExtractDatasetConf(infer=ds_train, label=ds_train),
+                model=ModelConf(
+                    name=Model.DETR,
+                    conf_path=osp.join(
+                        MODELSTORE_MMDET_CONFIGS_DIR,
+                        "detr",
+                        f"detr_r50_8xb2-150e_{ds_name}.py",
+                    ),
+                    checkpoint_path=osp.join(WEIGHTS_DIR, "detr", f"detr{ds_name}.pt"),
+                ),
+                evaluator=EvaluatorConf(name=ev),
+                feature=ExtractFeatureConf(),
+                experiment=ExperimentConf(name=f"extract_detr_{ds_name}"),
             ),
         )
 
@@ -90,7 +113,7 @@ def register_features():
                 model=ModelConf(
                     name=Model.GDINO,
                     conf_path=osp.join(
-                        MODELSTORE_DIR,
+                        MODELSTORE_CONFIGS_DIR,
                         "grounding_dino",
                         "groundingdino",
                         "config",
@@ -114,7 +137,7 @@ def register_features():
                 model=ModelConf(
                     name=Model.GENU,
                     conf_path=osp.join(
-                        MODELSTORE_DIR,
+                        MODELSTORE_CONFIGS_DIR,
                         "generateu",
                         "projects",
                         "DDETRS",

@@ -25,7 +25,8 @@ from .defaults import (
 )
 from .constants import (
     WEIGHTS_DIR,
-    MODELSTORE_DIR,
+    MODELSTORE_CONFIGS_DIR,
+    MODELSTORE_MMDET_CONFIGS_DIR,
     FEATURE_DIR,
     DATASETS_AND_EVALS,
 )
@@ -60,25 +61,58 @@ def register_probes():
     for variant in ProbeVariant:
         for ds_name, ds_train, ds_test, ev in DATASETS_AND_EVALS:
             cs.store(
-                f"probe.{variant}.dino.{ds_name}",
+                f"probe.{variant}.mmdet_dinodetr.{ds_name}",
                 BLUEGLASSConf(
                     runner=ProbeRunnerConf(),
                     dataset=ProbeDatasetConf(
                         train=ds_train, test=ds_test, label=ds_test
                     ),
                     model=ModelConf(
-                        name=Model.DINO,
+                        name=Model.DINO_DETR,
                         conf_path=osp.join(
-                            MODELSTORE_DIR, "mmbench", "configs", f"dino_{ds_name}.py"
+                            MODELSTORE_MMDET_CONFIGS_DIR,
+                            "dino",
+                            f"dino-4scale_r50_improved_8xb2-12e_{ds_name}.py",
                         ),
                         checkpoint_path=osp.join(
-                            WEIGHTS_DIR, "dino", f"finetuned_dino_{ds_name}.pt"
+                            WEIGHTS_DIR, "dinodetr", f"dinodetr_{ds_name}.pt"
                         ),
                     ),
                     evaluator=EvaluatorConf(name=ev, use_multi_layer=True),
-                    feature=ProbeFeatureConf(path=osp.join(FEATURE_DIR, "dino")),
+                    feature=ProbeFeatureConf(
+                        path=osp.join(FEATURE_DIR, "mmdet_dinodetr")
+                    ),
                     probe=ProbeConf(variant=variant, use_vlm_pred_as_true=True),
-                    experiment=ExperimentConf(name=f"probe_{variant}_dino_{ds_name}"),
+                    experiment=ExperimentConf(
+                        name=f"probe_{variant}_mmdet_dinodetr_{ds_name}"
+                    ),
+                ),
+            )
+
+            cs.store(
+                f"probe.{variant}.mmdet_detr.{ds_name}",
+                BLUEGLASSConf(
+                    runner=ProbeRunnerConf(),
+                    dataset=ProbeDatasetConf(
+                        train=ds_train, test=ds_test, label=ds_test
+                    ),
+                    model=ModelConf(
+                        name=Model.DETR,
+                        conf_path=osp.join(
+                            MODELSTORE_MMDET_CONFIGS_DIR,
+                            "detr",
+                            f"detr_r50_8xb2-150e_{ds_name}.py",
+                        ),
+                        checkpoint_path=osp.join(
+                            WEIGHTS_DIR, "detr", f"detr_{ds_name}.pt"
+                        ),
+                    ),
+                    evaluator=EvaluatorConf(name=ev, use_multi_layer=True),
+                    feature=ProbeFeatureConf(path=osp.join(FEATURE_DIR, "mmdet_detr")),
+                    probe=ProbeConf(variant=variant, use_vlm_pred_as_true=True),
+                    experiment=ExperimentConf(
+                        name=f"probe_{variant}_mmdet_etr_{ds_name}"
+                    ),
                 ),
             )
 
@@ -92,7 +126,7 @@ def register_probes():
                     model=ModelConf(
                         name=Model.GDINO,
                         conf_path=osp.join(
-                            MODELSTORE_DIR,
+                            MODELSTORE_CONFIGS_DIR,
                             "grounding_dino",
                             "groundingdino",
                             "config",
@@ -119,7 +153,7 @@ def register_probes():
                     model=ModelConf(
                         name=Model.GENU,
                         conf_path=osp.join(
-                            MODELSTORE_DIR,
+                            MODELSTORE_CONFIGS_DIR,
                             "generateu",
                             "projects",
                             "DDETRS",

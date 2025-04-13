@@ -24,7 +24,7 @@ class Models(str, Enum):
     GENU = "genu"
     LLAVA = "llava"
     HFBENCH = "hfbench"
-    MMBENCH = "mmbench"
+    MMDET = "mmdet"
 
 
 class Datasets(str, Enum):

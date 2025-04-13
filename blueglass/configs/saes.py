@@ -23,7 +23,13 @@ from .defaults import (
     FeaturePattern,
     FeatureSubPattern,
 )
-from .constants import WEIGHTS_DIR, MODELSTORE_DIR, FEATURE_DIR, DATASETS_AND_EVALS
+from .constants import (
+    WEIGHTS_DIR,
+    MODELSTORE_CONFIGS_DIR,
+    MODELSTORE_MMDET_CONFIGS_DIR,
+    FEATURE_DIR,
+    DATASETS_AND_EVALS,
+)
 
 from typing import List, Optional
 
@@ -73,23 +79,46 @@ def register_saes():
 
     for ds_name, ds_train, ds_test, ev in DATASETS_AND_EVALS:
         cs.store(
-            f"saes.dino.{ds_name}",
+            f"saes.mmdet_dinodetr.{ds_name}",
             BLUEGLASSConf(
                 runner=SAERunnerConf(),
                 dataset=SAEDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
-                    name=Model.DINO,
+                    name=Model.DINO_DETR,
                     conf_path=osp.join(
-                        MODELSTORE_DIR, "mmbench", "configs", f"dino_{ds_name}.py"
+                        MODELSTORE_MMDET_CONFIGS_DIR,
+                        "dino",
+                        f"dino-4scale_r50_improved_8xb2-12e_{ds_name}.py",
                     ),
                     checkpoint_path=osp.join(
-                        WEIGHTS_DIR, "dino", f"finetuned_dino_{ds_name}.pt"
+                        WEIGHTS_DIR, "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
                 feature=SAEFeatureConf(),
                 sae=SAEVariantConf(),
-                experiment=ExperimentConf(name=f"sae_dino_{ds_name}"),
+                experiment=ExperimentConf(name=f"sae_mmdet_dinodetr_{ds_name}"),
+            ),
+        )
+
+        cs.store(
+            f"saes.mmdet_detr.{ds_name}",
+            BLUEGLASSConf(
+                runner=SAERunnerConf(),
+                dataset=SAEDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                model=ModelConf(
+                    name=Model.DETR,
+                    conf_path=osp.join(
+                        MODELSTORE_MMDET_CONFIGS_DIR,
+                        "detr",
+                        f"detr_r50_8xb2-150e_{ds_name}.py",
+                    ),
+                    checkpoint_path=osp.join(WEIGHTS_DIR, "detr", f"detr_{ds_name}.pt"),
+                ),
+                evaluator=EvaluatorConf(name=ev),
+                feature=SAEFeatureConf(),
+                sae=SAEVariantConf(),
+                experiment=ExperimentConf(name=f"sae_mmdet_detr_{ds_name}"),
             ),
         )
 
@@ -101,7 +130,7 @@ def register_saes():
                 model=ModelConf(
                     name=Model.GDINO,
                     conf_path=osp.join(
-                        MODELSTORE_DIR,
+                        MODELSTORE_CONFIGS_DIR,
                         "grounding_dino",
                         "groundingdino",
                         "config",
@@ -126,7 +155,7 @@ def register_saes():
                 model=ModelConf(
                     name=Model.GENU,
                     conf_path=osp.join(
-                        MODELSTORE_DIR,
+                        MODELSTORE_CONFIGS_DIR,
                         "generateu",
                         "projects",
                         "DDETRS",

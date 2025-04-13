@@ -8,7 +8,11 @@ from .defaults import Dataset, Evaluator
 
 WEIGHTS_DIR = os.environ.get("WEIGHTS_DIR", os.path.join(os.getcwd(), "weights"))
 FEATURE_DIR = os.environ.get("FEATURE_DIR", osp.join(os.getcwd(), "bluelens"))
-MODELSTORE_DIR = osp.join(os.getcwd(), "blueglass", "modeling", "modelstore")
+MODELSTORE_CONFIGS_DIR = osp.join(os.getcwd(), "blueglass", "modeling", "modelstore")
+MODELSTORE_MMDET_CONFIGS_DIR = osp.join(
+    os.getcwd(), "blueglass", "third_party", "mmdet", "configs"
+)
+
 
 DATASETS_AND_EVALS: List[Tuple[str, Dataset, Dataset, Evaluator]] = [
     (

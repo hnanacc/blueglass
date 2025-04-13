@@ -283,7 +283,7 @@ class Runner:
 
             if self.step % self.logs_period == 0:
                 self.register_metrics(records_dict)
-                
+
             if self.step % self.ckpt_period == 0:
                 self.checkpoint()
 
