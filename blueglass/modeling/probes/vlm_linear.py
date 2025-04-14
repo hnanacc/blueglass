@@ -9,7 +9,7 @@ from blueglass.third_party.detectron2.structures import Instances, Boxes
 from blueglass.evaluation import compute_confusion_mask
 from blueglass.modeling.build import build_model
 from .losses import ApproximateVLMLoss, StandardLoss, normalize_boxes
-
+from blueglass.configs import FeaturePattern, FeatureSubPattern
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -47,10 +47,10 @@ class BoxProbe(nn.Module):
 
     def forward(self, batched_features: Dict[str, Tensor]) -> Dict[str, List[Tensor]]:
         deltas = self.box_deltas(
-            batched_features[FeatureSubPatterns.POS_IMG].to(self.device)
+            batched_features[FeaturePattern.POS_IMG].to(self.device)
         )
         refpts = inverse_sigmoid(
-            batched_features[FeatureSubPatterns.REFPNTS].to(self.device)
+            batched_features[FeaturePattern.REFPNTS].to(self.device)
         )
         pred_box = refpts + deltas
         return {"pred_box": [pb for pb in pred_box]}
@@ -64,7 +64,7 @@ class ClsProbe(nn.Module):
 
     def forward(self, batched_features: Dict[str, Tensor]) -> Dict[str, List[Tensor]]:
         pred_cls = self.cls_scores(
-            batched_features[FeatureSubPatterns.POS_IMG].to(self.device)
+            batched_features[FeaturePattern.POS_IMG].to(self.device)
         )
         return {"pred_cls": [pc for pc in pred_cls]}
 
@@ -75,7 +75,7 @@ class IoUProbe(nn.Module):
         self.iou_scores = nn.Linear(in_dim, out_dim)
 
     def forward(self, batched_features: Dict[str, Tensor]) -> Dict[str, List[Tensor]]:
-        pred_iou = self.iou_scores(batched_features[FeatureSubPatterns.POS_IMG])
+        pred_iou = self.iou_scores(batched_features[FeaturePattern.POS_IMG])
         return {"pred_iou": [pi for pi in pred_iou]}
 
 
@@ -189,8 +189,8 @@ class LinearProbedVLM(nn.Module):
         self.freeze_vlm()
 
         self.preprocess_seqs = build_sequence_processor(args)
-        self.feature_pattern = FeaturePatterns(args.feature_pattern)
-        self.feature_subpatn = FeatureSubPatterns(args.feature_subpattern)
+        self.feature_pattern = FeaturePattern(args.feature_pattern)
+        self.feature_subpatn = FeaturePattern(args.feature_subpattern)
         self.use_classified_boxes = args.use_classified_boxes
 
         sm.register(self.feature_pattern)

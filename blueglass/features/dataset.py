@@ -11,7 +11,7 @@ from functools import lru_cache
 from typing import Dict, Literal, Union, List, Any, Iterator
 import pandas as pd
 from collections import defaultdict, deque
-from blueglass.configs import BLUEGLASSConf, Model, Dataset
+from blueglass.configs import BLUEGLASSConf, Model, Datasets
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from blueglass.data import build_test_dataloader
 from blueglass.third_party.detectron2.utils import comm
@@ -27,7 +27,7 @@ class FeatureStream:
         self,
         conf: BLUEGLASSConf,
         model: Union[Model, nn.Module],
-        dataset: Dataset,
+        dataset: Datasets,
         filter_scheme: str,
     ):
         self.conf = conf
@@ -53,7 +53,7 @@ class FeatureStream:
 
 class StorageStream(FeatureStream):
     def __init__(
-        self, conf: BLUEGLASSConf, dataset: Dataset, model: Model, filter_scheme: str
+        self, conf: BLUEGLASSConf, dataset: Datasets, model: Model, filter_scheme: str
     ):
         super().__init__(conf, model, dataset, filter_scheme)
         self.source = FeatureStorage(conf, dataset, model, filter_scheme)
@@ -81,7 +81,7 @@ class StorageStream(FeatureStream):
 
 
 class InterceptorStream(FeatureStream):
-    def __init__(self, conf, dataset: Dataset, model: nn.Module, filter_scheme: str):
+    def __init__(self, conf, dataset: Datasets, model: nn.Module, filter_scheme: str):
         super().__init__(conf, model, dataset, filter_scheme)
         assert isinstance(
             model, nn.Module
@@ -131,7 +131,7 @@ class InterceptorStream(FeatureStream):
         while self._is_buffer_left():
             yield self._dequeue_buffer()
 
-    def _prepare_dataloader(self, conf: BLUEGLASSConf, dataset: Dataset):
+    def _prepare_dataloader(self, conf: BLUEGLASSConf, dataset: Datasets):
         return build_test_dataloader(dataset, conf.dataset.batch_size)
 
     def _filtered(self, items: Dict[str, Any]) -> Dict[str, Any]:
@@ -215,7 +215,7 @@ class FeatureDataset(IterableDataset):
     def __init__(
         self,
         conf: BLUEGLASSConf,
-        dataset: Dataset,
+        dataset: Datasets,
         model: Union[Model, nn.Module],
         mode: Literal["train", "test"] = "test",
         filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",
@@ -276,7 +276,7 @@ class FeatureDataset(IterableDataset):
 
 def build_feature_dataloader(
     conf: BLUEGLASSConf,
-    dataset: Dataset,
+    dataset: Datasets,
     model: Union[Model, nn.Module],
     mode: Literal["train", "test"],
     filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",

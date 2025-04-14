@@ -4,32 +4,9 @@
 import os.path as osp
 from dataclasses import dataclass, field
 from hydra.core.config_store import ConfigStore
-from .defaults import (
-    BLUEGLASSConf,
-    DatasetConf,
-    ModelConf,
-    RunnerConf,
-    ExperimentConf,
-    LabelMatchEvaluatorConf,
-    FeatureConf,
-    EvaluatorConf,
-    LabelMatchEvaluatorConf,
-    Runner,
-    RunnerMode,
-    InterceptMode,
-    FeaturePattern,
-    Model,
-)
-from .constants import (
-    DATASETS_AND_EVALS,
-    WEIGHTS_DIR,
-    MODELSTORE_CONFIGS_DIR,
-    MODELSTORE_MMDET_CONFIGS_DIR,
-    FEATURE_DIR,
-)
-
 from typing import List, Optional
 
+from blueglass.configs import *
 
 @dataclass
 class ExtractRunnerConf(RunnerConf):

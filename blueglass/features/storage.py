@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 import pyarrow.dataset as ds
 import torch
 from collections import OrderedDict
-from blueglass.configs import BLUEGLASSConf, Model, Dataset
+from blueglass.configs import BLUEGLASSConf, Model, Datasets
 from blueglass.utils.feature import (
     fetch_ondisk_feature_names,
     fetch_remote_feature_names,
@@ -28,7 +28,7 @@ logger = setup_blueglass_logger(__name__)
 
 
 class Reader:
-    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Dataset, model: Model):
+    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model):
         self.batch_size = conf.feature.batch_size
         self.path = prepare_feature_disk_path(conf, name, dataset, model)
         self.stream = ds.dataset(self.path, format="parquet")
@@ -44,7 +44,7 @@ class Reader:
 
 
 class Writer:
-    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Dataset, model: Model):
+    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model):
         self.conf = conf
         self.max_row_count = conf.feature.max_rows_per_part
         self.cur_row_count = 0
@@ -146,7 +146,7 @@ class FeatureStorage:
     def __init__(
         self,
         conf: BLUEGLASSConf,
-        dataset: Dataset,
+        dataset: Datasets,
         model: Model,
         filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",
     ):

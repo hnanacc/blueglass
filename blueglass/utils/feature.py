@@ -11,7 +11,7 @@ from huggingface_hub import (
     get_paths_info,
     snapshot_download,
 )
-from blueglass.configs import BLUEGLASSConf, Dataset, Model
+from blueglass.configs import BLUEGLASSConf, Datasets, Model
 
 from typing import List, Dict, Any, Optional
 
@@ -94,7 +94,7 @@ def _download_features_from_hf(
 
 
 def _build_feature_path_tree(
-    dataset: Dataset, model: Model, sep: Optional[str] = None
+    dataset: Datasets, model: Model, sep: Optional[str] = None
 ) -> str:
     pieces = [
         "features_datasets",
@@ -104,7 +104,7 @@ def _build_feature_path_tree(
     return sep.join(pieces) if sep else osp.join(*pieces)
 
 
-def prepare_feature_disk_path(conf, name: str, dataset: Dataset, model: Model):
+def prepare_feature_disk_path(conf, name: str, dataset: Datasets, model: Model):
     ondisk_path = osp.join(
         conf.feature.path, _build_feature_path_tree(dataset, model), name
     )
@@ -131,7 +131,7 @@ def prepare_feature_disk_path(conf, name: str, dataset: Dataset, model: Model):
 
 
 def fetch_remote_feature_names(
-    conf: BLUEGLASSConf, dataset: Dataset, model: Model
+    conf: BLUEGLASSConf, dataset: Datasets, model: Model
 ) -> List[str]:
     filter_terms = _build_feature_path_tree(dataset, model)
     remote_names = list_repo_files(REMOTE, repo_type="dataset")
@@ -140,7 +140,7 @@ def fetch_remote_feature_names(
     return list(set([name.split("/")[-2] for name in filter_names]))
 
 
-def fetch_ondisk_feature_names(conf: BLUEGLASSConf, dataset: Dataset, model: Model):
+def fetch_ondisk_feature_names(conf: BLUEGLASSConf, dataset: Datasets, model: Model):
     if conf.feature.path is None:
         return []
 

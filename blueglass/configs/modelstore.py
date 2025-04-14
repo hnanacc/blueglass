@@ -5,25 +5,8 @@ import os
 import os.path as osp
 from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
-from .defaults import (
-    BLUEGLASSConf,
-    DatasetConf,
-    ModelConf,
-    RunnerConf,
-    ExperimentConf,
-    EvaluatorConf,
-    LabelMatchEvaluatorConf,
-    Runner,
-    RunnerMode,
-    Model,
-)
-from .constants import (
-    WEIGHTS_DIR,
-    MODELSTORE_CONFIGS_DIR,
-    MODELSTORE_MMDET_CONFIGS_DIR,
-    DATASETS_AND_EVALS,
-)
 
+from blueglass.configs import *
 
 @dataclass
 class ModelstoreDatasetConf(DatasetConf):

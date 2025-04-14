@@ -9,14 +9,14 @@ from blueglass.third_party.detectron2.data import MetadataCatalog
 from blueglass.third_party.detectron2.evaluation import DatasetEvaluator
 from blueglass.third_party.detectron2.structures import Instances, BoxMode
 from blueglass.visualize.detections import visualize_detections
-from blueglass.configs import BLUEGLASSConf, Dataset
+from blueglass.configs import BLUEGLASSConf, Datasets
 from .matchers import prepare_matcher
 
 
 logger = setup_blueglass_logger(__name__)
 
 
-def prepare_bbox_format(ds: Dataset):
+def prepare_bbox_format(ds: Datasets):
     return BoxMode.XYXY_ABS
 
 
