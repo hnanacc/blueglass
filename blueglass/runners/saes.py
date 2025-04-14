@@ -46,7 +46,6 @@ class SAERunner(Runner):
         self.warmup_steps = conf.runner.warmup_steps
         self.device = DEVICE
         self.feature_model = self._frozen(build_model(conf))
-        self.precision = getattr(torch, conf.runner.precision)
         self.max_grad_norm = conf.runner.max_grad_norm
         self.vanilla_fm_metrics = None
         assert isinstance(self.precision, torch.dtype), "Invalid precision."

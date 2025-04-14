@@ -30,32 +30,9 @@ from blueglass.modeling.build import build_model
 from blueglass.structures.types import is_comm_dict
 from blueglass.configs import BLUEGLASSConf, FeaturePattern
 from blueglass.third_party.detectron2.engine import create_ddp_model
-
+from .utils import BestTracker
 
 logger = setup_blueglass_logger(__name__)
-torch.autograd.set_detect_anomaly(True)
-
-
-class BestTracker:
-    def __init__(self):
-        self.best_fitness = None
-        self.best_step = None
-
-    def is_best(self, fitness: float, step: int) -> bool:
-        is_best = self.best_fitness is None or fitness > self.best_fitness
-
-        if is_best:
-            self.best_fitness = fitness
-            self.best_step = step
-
-        return is_best
-
-    def best(self):
-        if self.best_fitness is not None:
-            return self.best_fitness
-        else:
-            return 0
-
 
 class Runner:
     def __init__(self, conf: BLUEGLASSConf):
@@ -70,7 +47,8 @@ class Runner:
         self.eval_period = conf.runner.eval_period
         self.logs_period = conf.runner.logs_period
         self.ckpt_period = conf.runner.ckpt_period
-
+        self.precision   = getattr(torch, conf.runner.precision)
+        
         assert (
             self.eval_period >= self.logs_period
         ), "invalid eval period and logs period, logs must be smaller than eval."

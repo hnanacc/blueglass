@@ -4,7 +4,7 @@
 from blueglass.utils.logger_utils import setup_blueglass_logger
 import numpy as np
 import torch
-from torch import Tensor, nn
+from torch import Tensor, nn, autocast
 from blueglass.runners.runner import Runner
 from typing import Dict, Any, List, Tuple
 from collections import defaultdict
@@ -53,17 +53,27 @@ class ModelstoreRunner(Runner):
             [v for v in metrics_dict.values() if np.isfinite(v)]
         )
 
-        return reduced_losses_dict, metrics_dict, {}
-
+        return {}, reduced_losses_dict, metrics_dict, {}
+        
     def run_step(self, batched_inputs: Dict[str, Any]) -> Dict[str, Any]:
-        self.optimizer.zero_grad()
 
-        with torch.autocast("cuda", torch.float16):
+        if self.step <= self.warmup_steps:
+            _return = self.model(batched_inputs)
+            self.scheduler.step()
+            current_lr = self.optimizer.param_groups[0]["lr"]
+            logger.info(
+                f"[Warmup Step {self.step}/{self.warmup_steps}, LR: {current_lr:.4f}"
+            )
+            return _return
+        
+        with autocast("cuda", dtype=self.precision):
             records_fwd = self.model(batched_inputs)
 
+        self.optimizer.zero_grad()
+        
         losses = records_fwd["loss"]
         assert isinstance(losses, Tensor), "received non-tensor loss."
-
+        
         self.grad_scaler.scale(losses).backward()
         self.grad_scaler.unscale_(self.optimizer)
         nn.utils.clip_grad_norm_(self.model.parameters(), self.conf.runner.max_grad_norm)
