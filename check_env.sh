@@ -13,7 +13,7 @@ fi
 CUDA_HOME=/home/Alan_Smithee/software/cuda-12.4
 if [[ "$CUDA_HOME" == *"Alan_Smithee"* ]]; then
     echo "🎬 Plot twist: CUDA path contains 'Alan_Smithee' — the infamous unknown director. This script refuses to work with mysterious identities. 
-    Please pass a real CUDA path."
+    Please pass a real CUDA path in check_env.sh file."
     exit 1
 fi
 
