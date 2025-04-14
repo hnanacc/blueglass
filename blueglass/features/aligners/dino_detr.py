@@ -14,6 +14,7 @@ from ..types import IOFrame
 
 
 class DINOAligner(Aligner):
+
     def _expand_std_io(
         self,
         input_infer_id: int,
@@ -22,7 +23,7 @@ class DINOAligner(Aligner):
         num_heads: int = 1,
     ):
         """
-        _expand_std_io adapted to gdino model
+        _expand_std_io adapted to dino-detr model
 
         Arranges tensors from a dictionary into rows, repeating the structure based on the number of attention heads.
 

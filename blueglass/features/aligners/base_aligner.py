@@ -28,6 +28,13 @@ def process_feature(
 
 
 class Aligner:
+    """
+    Module responsible for generating the BlueLens dataset.
+
+    The Aligner class processes model features by decoupling them into individual tokens,
+    each linked to its corresponding input and output components.
+    """
+
     def __init__(self, conf: BLUEGLASSConf):
         self.conf = conf
         self.cpu_count = conf.num_cpus - 2

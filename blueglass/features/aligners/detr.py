@@ -22,7 +22,7 @@ class DETRAligner(Aligner):
         num_heads: int = 1,
     ):
         """
-        _expand_std_io adapted to gdino model
+        _expand_std_io adapted to detr model
 
         Arranges tensors from a dictionary into rows, repeating the structure based on the number of attention heads.
 
