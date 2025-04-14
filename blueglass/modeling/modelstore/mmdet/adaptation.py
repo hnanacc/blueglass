@@ -160,7 +160,7 @@ class MMDetModel(nn.Module):
         #     {"instances": self._mm_to_d2(bi, bo)}
         #     for bi, bo in zip(batched_inputs, batched_outputs)
         # ]
-        
+
         processed_batched_outputs = []
         for bi, bo in zip(batched_inputs, batched_outputs):
 

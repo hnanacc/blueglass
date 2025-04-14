@@ -1,7 +1,7 @@
 # Copyright 2025 Intel Corporation
 # SPDX: Apache-2.0
 
-from .base_processor import Processor
+from .base_aligner import Aligner
 
 from typing import Callable, List, Dict, Any, Union, TypedDict
 from collections import defaultdict
@@ -12,5 +12,5 @@ from ..schema import MinimalSchemaFrame
 from ..accessors import Recorder
 
 
-class FlorenceProcessor(Processor):
+class FlorenceAligner(Aligner):
     pass

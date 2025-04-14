@@ -4,13 +4,13 @@
 from typing import List, Dict
 from torch import Tensor
 
-from .base_processor import Processor
+from .base_aligner import Aligner
 from ..schema import MinimalSchemaFrame
 from ..accessors import Recorder
 from ..types import IOFrame
 
 
-class GENUProcessor(Processor):
+class GENUAligner(Aligner):
     def _process_det_decoder_resid_subpattern(
         self, infer_id: int, subpattern: str, feature: Tensor
     ) -> List[MinimalSchemaFrame]:

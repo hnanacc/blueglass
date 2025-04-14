@@ -6,11 +6,11 @@ from blueglass.configs import BLUEGLASSConf, Model, FeaturePattern
 from ..accessors import Recorder
 from ..types import DistFormat
 
-from .gdino import GDINOProcessor
-from .dino_detr import DINOProcessor
-from .detr import DETRProcessor
-from .genu import GENUProcessor
-from .florence import FlorenceProcessor
+from .gdino import GDINOAligner
+from .dino_detr import DINOAligner
+from .detr import DETRAligner
+from .genu import GENUAligner
+from .florence import FlorenceAligner
 
 RecordedFormatType = Union[Dict[FeaturePattern, Recorder], Dict[str, Recorder]]
 SchemaedFormatType = Dict[str, DistFormat]
@@ -37,15 +37,15 @@ def _prepare_sequence_processor(
     conf: BLUEGLASSConf,
 ) -> Callable[[RecordedFormatType], SchemaedFormatType]:
     return {
-        Model.GDINO: GDINOProcessor,
-        Model.GENU: GENUProcessor,
-        Model.DINO_DETR: DINOProcessor,
-        Model.DETR: DETRProcessor,
-        Model.FLORENCE: FlorenceProcessor,
+        Model.GDINO: GDINOAligner,
+        Model.GENU: GENUAligner,
+        Model.DINO_DETR: DINOAligner,
+        Model.DETR: DETRAligner,
+        Model.FLORENCE: FlorenceAligner,
     }[conf.model.name](conf)
 
 
-class ComposedProcessor:
+class ComposedAligner:
     def __init__(
         self,
         recorder_processor: Callable[[RecordedFormatType], SchemaedFormatType],
@@ -61,8 +61,8 @@ class ComposedProcessor:
         return self.rec_proc(recorder_per_pattern)
 
 
-def build_records_processor(conf: BLUEGLASSConf):
+def build_records_aligners(conf: BLUEGLASSConf):
     rec_proc = _prepare_sequence_processor(conf)
     ext_proc = _prepare_extender_processor(conf)
 
-    return ComposedProcessor(rec_proc, ext_proc)
+    return ComposedAligner(rec_proc, ext_proc)

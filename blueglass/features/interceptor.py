@@ -7,7 +7,7 @@ import pandas as pd
 from torch import nn
 from torch.utils.hooks import RemovableHandle
 from blueglass.configs import BLUEGLASSConf, InterceptMode, FeaturePattern
-from .processors.build import build_records_processor
+from .aligners.build import build_records_aligners
 from .hooks import build_hooknames_from_names
 from .accessors import (
     Recorder,
@@ -215,7 +215,7 @@ class FeatureInterceptor(nn.Module):
         self.patchers_per_name = patchers_per_name
 
         self.sub_incpt = self.build_sub_interceptor()
-        self.rec_procr = build_records_processor(conf)
+        self.rec_procr = build_records_aligners(conf)
 
     def build_sub_interceptor(self):
         match self.conf.feature.intercept_mode:

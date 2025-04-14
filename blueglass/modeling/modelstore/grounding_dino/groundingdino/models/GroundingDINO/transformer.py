@@ -50,7 +50,6 @@ from blueglass.configs import FeaturePattern, FeatureSubPattern
 from blueglass.configs.defaults import BLUEGLASSConf
 
 
-
 class Transformer(nn.Module):
     def __init__(
         self,
@@ -1078,7 +1077,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
         n_heads=8,
         n_points=4,
         use_text_feat_guide=False,
-        use_text_cross_attention=False
+        use_text_cross_attention=False,
     ):
         super().__init__()
         self.layer_index = None
@@ -1191,7 +1190,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
         Layer Knockoff experiment
         """
         base_path = "./SAE_RESULTS/indices.npy"
-        
+
         layer_knockoff_exp_config = blueglass_kwargs["blueglass_conf"][
             "layer_knock_off"
         ]
@@ -1212,8 +1211,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
             circle_index = circle_indices[layer_id]
             knockoff_config = layer_knockoff_exp_config.knockoff_config
             if knockoff_config[layer_id]:
-                L_filter_ind_knockoff = np.load(
-                    base_path)
+                L_filter_ind_knockoff = np.load(base_path)
                 knockoff_band = L_filter_ind_knockoff
                 with torch.no_grad():
                     tgt[:, :, L_filter_ind_knockoff] = 0
@@ -1233,7 +1231,6 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
             assert self.layer_index is not None, "layer_index not initialized."
 
-            
             """
             BlueGlass Recorder and Patcher
             """
@@ -1280,7 +1277,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
 
         assert isinstance(tgt, Tensor), "unexpected type for feature."
         assert isinstance(tgt_reference_points, Tensor), "unexpected type for feature."
-        
+
         """
         BlueGlass Recorder and Patcher
         """
@@ -1301,7 +1298,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
         tgt = self.forward_ffn(tgt)
 
         assert isinstance(tgt, Tensor), "unexpected type for feature."
-        
+
         """
         BlueGlass Recorder and Patcher
         """

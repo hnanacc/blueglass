@@ -6,14 +6,14 @@ from typing import List, Dict, Tuple
 import torch
 from torch import Tensor
 
-from .base_processor import Processor
+from .base_aligner import Aligner
 
 from ..schema import MinimalSchemaFrame
 from ..accessors import Recorder
 from ..types import IOFrame
 
 
-class GDINOProcessor(Processor):
+class GDINOAligner(Aligner):
     def _expand_std_io(
         self,
         input_infer_id: int,
@@ -30,7 +30,7 @@ class GDINOProcessor(Processor):
         where each row corresponds to a specific inference ID and is repeated according to the number of attention heads (`num_heads`).
         This is useful for models that require multi-head attention or repeated tensor structures.
 
-        The process can be visualized as follows:
+        The aligner process can be visualized as follows:
 
         1. Input Dictionary (std_io_dict):
         | pred_box | pred_cls | pred_scr | pred_ious | conf_msk | token_ch | image_id | filename |

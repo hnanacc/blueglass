@@ -6,14 +6,14 @@ from typing import List, Dict, Tuple
 import torch
 from torch import Tensor
 
-from .base_processor import Processor
+from .base_aligner import Aligner
 
 from ..schema import MinimalSchemaFrame
 from ..accessors import Recorder
 from ..types import IOFrame
 
 
-class DETRProcessor(Processor):
+class DINOAligner(Aligner):
     def _expand_std_io(
         self,
         input_infer_id: int,
@@ -30,7 +30,7 @@ class DETRProcessor(Processor):
         where each row corresponds to a specific inference ID and is repeated according to the number of attention heads (`num_heads`).
         This is useful for models that require multi-head attention or repeated tensor structures.
 
-        The process can be visualized as follows:
+        The aligner process can be visualized as follows:
 
         1. Input Dictionary (std_io_dict):
         | pred_box | pred_cls | pred_scr | pred_ious | conf_msk | token_ch | image_id | filename |
@@ -263,7 +263,7 @@ class DETRProcessor(Processor):
                 return result
 
             case "outputs":
-                feature = feature.permute(1, 0, 2)  # get the batch_size to the outer index
+                # feature = feature.permute(1, 0, 2) # get the batch_size to the outer index
                 batch_size, num_features, feature_dim = feature.shape
                 expand_std_io_dict = self._expand_std_io(
                     input_infer_id, total_infer_ids, std_io
@@ -311,7 +311,7 @@ class DETRProcessor(Processor):
     ) -> Dict[str, list]:
         match subpattern:
             case "pos_img":
-                # feature = feature.permute(1, 0, 2)  # get the batch_size to the outer index
+                # feature = feature.permute(1, 0, 2) # get the batch_size to the outer index
                 batch_size, num_features, feature_dim = feature.shape
                 expand_std_io_dict = self._expand_std_io(
                     input_infer_id, total_infer_ids, std_io

@@ -559,7 +559,7 @@ class DeformableTransformerDecoder(nn.Module):
         """
         for layer_index, dec in enumerate(self.layers):
             dec.layer_index = layer_index
-            
+
     def forward(
         self,
         tgt,

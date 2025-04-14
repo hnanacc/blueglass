@@ -27,7 +27,7 @@ def process_feature(
     return result
 
 
-class Processor:
+class Aligner:
     def __init__(self, conf: BLUEGLASSConf):
         self.conf = conf
         self.cpu_count = conf.num_cpus - 2
