@@ -66,7 +66,7 @@ class ModelstoreRunner(Runner):
 
         self.grad_scaler.scale(losses).backward()
         self.grad_scaler.unscale_(self.optimizer)
-        nn.utils.clip_grad_norm_(self.model.parameters(), 0.1)
+        nn.utils.clip_grad_norm_(self.model.parameters(), self.conf.runner.max_grad_norm)
         self.grad_scaler.step(self.optimizer)
         self.grad_scaler.update()
         self.scheduler.step()

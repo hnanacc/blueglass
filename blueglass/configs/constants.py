@@ -32,7 +32,7 @@ class Datasets(str, Enum):
     KITTI_MINI = "kitti_mini"
     BDD100K_TRAIN = "bdd100k_train"
     BDD100K_MINI = "bdd100k_mini"
-    BDD100k_VAL = "bdd100k_val"
+    BDD100K_VAL = "bdd100k_val"
     LVIS_TRAIN = "lvis_train"
     LVIS_MINIVAL = "lvis_minival"
     LVIS_MINI = "lvis_mini"
