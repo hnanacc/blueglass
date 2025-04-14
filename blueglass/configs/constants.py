@@ -204,7 +204,7 @@ DATASETS_AND_EVALS: List[Tuple[str, Datasets, Datasets, Evaluator]] = [
     ("valerie", Datasets.VALERIE22_TRAIN, Datasets.VALERIE22_VAL, Evaluator.COCO),
     ("ecpersons", Datasets.ECPERSONS_TRAIN, Datasets.ECPERSONS_VAL, Evaluator.COCO),
     ("kitti", Datasets.KITTI_TRAIN, Datasets.KITTI_VAL, Evaluator.COCO),
-    ("bdd100k", Datasets.BDD100K_TRAIN, Datasets.BDD100k_VAL, Evaluator.BDD100K),
+    ("bdd100k", Datasets.BDD100K_TRAIN, Datasets.BDD100K_VAL, Evaluator.BDD100K),
     ("coco", Datasets.COCO_TRAIN, Datasets.COCO_VAL, Evaluator.COCO),
     ("lvis", Datasets.LVIS_TRAIN, Datasets.LVIS_MINIVAL, Evaluator.LVIS),
 ]
@@ -220,7 +220,7 @@ DATASETS_AND_Extraction: List[Tuple[str, Datasets, Datasets, Evaluator]] = [
     ("valerie", Datasets.VALERIE22_TRAIN, Datasets.VALERIE22_VAL, Evaluator.COCO),
     ("ecpersons", Datasets.ECPERSONS_TRAIN, Datasets.ECPERSONS_VAL, Evaluator.COCO),
     ("kitti", Datasets.KITTI_TRAIN, Datasets.KITTI_VAL, Evaluator.COCO),
-    ("bdd100k", Datasets.BDD100K_TRAIN, Datasets.BDD100k_VAL, Evaluator.BDD100K),
+    ("bdd100k", Datasets.BDD100K_TRAIN, Datasets.BDD100K_VAL, Evaluator.BDD100K),
     ("coco", Datasets.COCO_TRAIN, Datasets.COCO_VAL, Evaluator.COCO),
     ("lvis", Datasets.LVIS_TRAIN, Datasets.LVIS_MINIVAL, Evaluator.LVIS),
 ]
