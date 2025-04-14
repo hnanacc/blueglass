@@ -152,9 +152,9 @@ class DINOProcessor(Processor):
     ) -> Dict[str, list]:
         match subpattern:
             case "pre_img" | "pos_img" | "refpnts":
-                feature = feature.permute(
-                    1, 0, 2
-                )  # get the batch_size to the outer index
+                # feature = feature.permute(
+                #     1, 0, 2
+                # )  # get the batch_size to the outer index
                 batch_size, num_features, feature_dim = feature.shape
                 expand_std_io_dict = self._expand_std_io(
                     input_infer_id, total_infer_ids, std_io
@@ -263,7 +263,7 @@ class DINOProcessor(Processor):
                 return result
 
             case "outputs":
-                feature = feature.permute(1, 0, 2)
+                # feature = feature.permute(1, 0, 2) # get the batch_size to the outer index
                 batch_size, num_features, feature_dim = feature.shape
                 expand_std_io_dict = self._expand_std_io(
                     input_infer_id, total_infer_ids, std_io
@@ -311,7 +311,7 @@ class DINOProcessor(Processor):
     ) -> Dict[str, list]:
         match subpattern:
             case "pos_img":
-                feature = feature.permute(1, 0, 2)
+                # feature = feature.permute(1, 0, 2) # get the batch_size to the outer index
                 batch_size, num_features, feature_dim = feature.shape
                 expand_std_io_dict = self._expand_std_io(
                     input_infer_id, total_infer_ids, std_io
