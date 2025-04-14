@@ -41,7 +41,6 @@ from .defaults import (
 )
 
 
-
 from .modelstore import register_modelstores
 from .features import register_features
 from .probes import register_probes
@@ -105,5 +104,4 @@ __all__ = [
     "LayerKnockoffExpConf",
     "SAEConf",
     "SAEVariant",
-
 ]

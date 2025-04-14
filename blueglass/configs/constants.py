@@ -13,11 +13,13 @@ MODELSTORE_MMDET_CONFIGS_DIR = osp.join(
     os.getcwd(), "blueglass", "third_party", "mmdet", "configs"
 )
 
+
 class Precision(str, Enum):
     BFLOAT16 = "bfloat16"
     FLOAT16 = "float16"
     FLOAT32 = "float32"
-    
+
+
 class Datasets(str, Enum):
     ECPERSONS_TRAIN = "ecpersons_train"
     ECPERSONS_VAL = "ecpersons_val"
@@ -190,7 +192,7 @@ class Optimizer(str, Enum):
 class Scheduler(str, Enum):
     COSINE = "cosine"
     MULTISTEP = "multistep"
-    
+
 
 DATASETS_AND_EVALS: List[Tuple[str, Datasets, Datasets, Evaluator]] = [
     (
@@ -222,4 +224,3 @@ DATASETS_AND_Extraction: List[Tuple[str, Datasets, Datasets, Evaluator]] = [
     ("coco", Datasets.COCO_TRAIN, Datasets.COCO_VAL, Evaluator.COCO),
     ("lvis", Datasets.LVIS_TRAIN, Datasets.LVIS_MINIVAL, Evaluator.LVIS),
 ]
-

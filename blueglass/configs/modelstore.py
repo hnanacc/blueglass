@@ -8,6 +8,7 @@ from hydra.core.config_store import ConfigStore
 
 from blueglass.configs import *
 
+
 @dataclass
 class ModelstoreDatasetConf(DatasetConf):
     batch_size: int = 8

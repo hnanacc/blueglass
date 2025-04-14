@@ -7,7 +7,25 @@ from dataclasses import dataclass, field
 import torch
 
 from typing import Literal, Optional, List, Tuple, Any
-from .constants import Datasets, Model, Evaluator, Prompter, Matcher, Encoder, Runner, RunnerMode, Optimizer, Precision, Scheduler, SAEVariant, ProbeVariant, InterceptMode, FeaturePattern, FeatureSubPattern
+from .constants import (
+    Datasets,
+    Model,
+    Evaluator,
+    Prompter,
+    Matcher,
+    Encoder,
+    Runner,
+    RunnerMode,
+    Optimizer,
+    Precision,
+    Scheduler,
+    SAEVariant,
+    ProbeVariant,
+    InterceptMode,
+    FeaturePattern,
+    FeatureSubPattern,
+)
+
 
 @dataclass
 class DatasetConf:
@@ -17,6 +35,7 @@ class DatasetConf:
     test: Datasets = Datasets.COCO_MINI
 
     batch_size: int = 8
+
 
 @dataclass
 class ModelConf:

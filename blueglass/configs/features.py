@@ -8,6 +8,7 @@ from typing import List, Optional
 
 from blueglass.configs import *
 
+
 @dataclass
 class ExtractRunnerConf(RunnerConf):
     name: Runner = Runner.FEATURE_EXTRACT
