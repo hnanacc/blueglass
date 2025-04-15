@@ -89,7 +89,6 @@ blueglass/modeling/modelstore/generateu/projects/DDETRS/ddetrs/models/deformable
 blueglass/modeling/modelstore/grounding_dino/build
 
 blueglass/third_party/mmdet
-blueglass/third_party/coco
 blueglass/third_party/lvis
 
 *sae-ckpts*

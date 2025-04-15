@@ -7,7 +7,7 @@ import torch
 from torch import Tensor, nn, autocast
 from blueglass.runners.runner import Runner
 from typing import Dict, Any, List, Tuple
-from collections import defaultdict
+from collections import defaultdict, ChainMap
 from blueglass.configs import BLUEGLASSConf
 from blueglass.modeling.build import build_model
 from blueglass.third_party.detectron2.engine import create_ddp_model
@@ -28,32 +28,84 @@ class ModelstoreRunner(Runner):
     def process_records(
         self, gathered_records: List[Dict[str, Any]]
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
-        losses_dict, metrics_dict = defaultdict(list), {}
+        def strip_extra_prefix(key: str, substr: str) -> str:
+            parts = key.rsplit("/", 1)
+            if len(parts) == 2 and parts[1].startswith(substr):
+                parts[1] = parts[1].removeprefix(substr)
+            return "/".join(parts)
 
-        for rank, records_per_rank in enumerate(gathered_records):
-            for branch, records_per_branch in records_per_rank.items():
-                if branch == "records_fwd":
-                    for key, value in records_per_branch.items():
-                        if "loss" in key:
-                            losses_dict[f"losses/{key}"].append(float(value))
+        losses_dict, metrics_dict, visual_metrics_dict, extras_dict = {}, {}, {}, {}
 
-                if branch == "metrics":
-                    assert rank == 0, "metrics received in rank>0."
-                    assert "bbox" in records_per_branch, "bbox not in metrics."
+        reduced_records = defaultdict(list)
 
-                    for key, value in records_per_branch["bbox"].items():
-                        metrics_dict[f"metrics/{key}"] = value
+        for records_per_rank in gathered_records:
+            for name, item in records_per_rank.items():
+                reduced_records[name].append(item)
 
-        reduced_losses_dict = {}
-        for key, value in losses_dict.items():
-            reduced_losses_dict[key] = sum(value)
+        reduced_records = {
+            name: item if "metric" in name else np.mean(item)
+            for name, item in reduced_records.items()
+        }
 
-        reduced_losses_dict["losses_reduced"] = reduced_losses_dict.pop("losses/loss")
-        metrics_dict["metric_fitness"] = sum(
-            [v for v in metrics_dict.values() if np.isfinite(v)]
-        )
+        to_remove = []
+        for name, item in reduced_records.items():
+            if "loss" in name:
+                losses_dict[name] = item
+                continue
 
-        return {}, reduced_losses_dict, metrics_dict, {}
+            if "extra" in name:
+                extras_dict[name] = item
+                continue
+
+            if "metric" in name:
+                metrics_data = dict(ChainMap(*item))
+
+                # Split into visual and non-visual metrics
+
+                visual_metrics = {
+                    k: v for k, v in metrics_data.items() if "visual" in k
+                }
+                non_visual_metrics = {
+                    f"metrics/{k}": v
+                    for k, v in metrics_data.items()
+                    if "visual" not in k
+                }
+
+                # Update target dicts
+                visual_metrics_dict.update(visual_metrics)
+                metrics_dict.update(non_visual_metrics)
+                continue
+
+        extras_dict = {
+            f"extra/{strip_extra_prefix(k, 'extra_')}": v
+            for k, v in extras_dict.items()
+            if "visual" not in k
+        }
+
+        # Safely remove after iteration
+        for key in to_remove:
+            metrics_data.pop(key)
+
+        if len(losses_dict) > 0:
+            losses_dict["losses_reduced"] = sum(losses_dict.values())
+
+        if len(metrics_dict) > 0:
+            metrics_dict["metric_fitness"] = sum(metrics_dict.values())
+
+            # Computing metric fitness based on each sae
+            metric_fitness_dict = defaultdict(int)
+            non_visual_metrics_data = {
+                k: v for k, v in metrics_data.items() if "visual" not in k
+            }
+            for key, value in non_visual_metrics_data.items():
+
+                if isinstance(key, str) and "/" in key:
+                    prefix = key.split("/")[0]
+                    metric_fitness_dict[f"metric_reduced/{prefix}"] += value
+
+            metrics_dict = metrics_dict | metric_fitness_dict
+
+        return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
         
     def run_step(self, batched_inputs: Dict[str, Any]) -> Dict[str, Any]:
 
@@ -67,21 +119,22 @@ class ModelstoreRunner(Runner):
             return _return
         
         with autocast("cuda", dtype=self.precision):
-            records_fwd = self.model(batched_inputs)
+            records = self.model(batched_inputs)
 
         self.optimizer.zero_grad()
         
-        losses = records_fwd["loss"]
-        assert isinstance(losses, Tensor), "received non-tensor loss."
+        loss = records.pop("loss")
+                
+        assert isinstance(loss, Tensor), "received non-tensor loss."
         
-        self.grad_scaler.scale(losses).backward()
+        self.grad_scaler.scale(loss).backward()
         self.grad_scaler.unscale_(self.optimizer)
         nn.utils.clip_grad_norm_(self.model.parameters(), self.conf.runner.max_grad_norm)
         self.grad_scaler.step(self.optimizer)
         self.grad_scaler.update()
         self.scheduler.step()
 
-        return {"records_fwd": records_fwd}
+        return records
 
     def infer(self):
         raise NotImplementedError("infer is not supported for this runner.")

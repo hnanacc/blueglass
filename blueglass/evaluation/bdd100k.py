@@ -5,9 +5,14 @@ import os
 from collections import OrderedDict
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from itertools import chain
-from scalabel.eval.detect import evaluate_det
-from scalabel.label.io import load
-from scalabel.label.typing import Config, Frame
+# from scalabel.eval.detect import evaluate_det
+# from scalabel.label.io import load
+# from scalabel.label.typing import Config, Frame
+
+from blueglass.third_party.scalabel.scalabel.eval.detect import evaluate_det
+from blueglass.third_party.scalabel.scalabel.label.io import load
+from blueglass.third_party.scalabel.scalabel.label.typing import Config, Frame
+
 
 from blueglass.third_party.detectron2.data import MetadataCatalog
 from blueglass.third_party.detectron2.utils import comm
@@ -40,7 +45,6 @@ CONFIG = {
         {"name": "traffic sign"},
     ],
 }
-
 
 class BDD100kEvaluator(DatasetEvaluator):
     def __init__(
@@ -105,4 +109,5 @@ class BDD100kEvaluator(DatasetEvaluator):
 
         overall = {k: v[1]["OVERALL"] for k, v in r.dict().items()}
         print(f"\n{create_small_table(overall)}\n")
-        return OrderedDict({"bbox": overall})
+        overall_metrics = {f"bbox/{k}": v for k, v in overall.items()}
+        return overall_metrics

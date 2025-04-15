@@ -106,11 +106,13 @@ class MMDetModel(nn.Module):
         mm_pre = self.preprocess(batched_inputs)
         mm_pro = self.model.data_preprocessor(mm_pre, self.training)
         mm_pos = self.model(**mm_pro, mode=("loss" if self.training else "predict"))
-        return (
-            self.model.parse_losses(mm_pos)[1]
-            if self.training
-            else self.postprocess(batched_inputs, mm_pos)
-        )
+
+        if self.training:
+            _return = dict(self.model.parse_losses(mm_pos)[1])
+        else:
+            _return = self.postprocess(batched_inputs, mm_pos)
+
+        return _return
 
     def _d2_to_mm(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if "image" in inputs:

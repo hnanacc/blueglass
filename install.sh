@@ -42,6 +42,10 @@ else
     echo "COCO repo already exists at $COCO_DIR. Skipping setup."
 fi
 
+# # -----
+# # Install external libraries.
+# # -----
+
 # Clone lvisapi into the 'lvis' subfolder
 LVIS_DIR="$THIRD_PARTY_ROOT/lvis"
 if [ ! -d "$LVIS_DIR" ]; then
@@ -53,6 +57,11 @@ else
     echo "LVIS-API repo already exists at $LVIS_DIR. Skipping clone."
 fi
 
+
+# Install CoCoAPI
+pip install -e "${THIRD_PARTY_ROOT}/coco/PythonAPI"
+# Install Scalabel
+pip install -e "${THIRD_PARTY_ROOT}/scalabel"
 
 # -----
 # Prepare GenerateU environment.

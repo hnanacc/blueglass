@@ -26,7 +26,6 @@ scipy
 opencv-python
 hydra-core
 SciencePlots
-scalabel
 google-genai
 openai
 shapely

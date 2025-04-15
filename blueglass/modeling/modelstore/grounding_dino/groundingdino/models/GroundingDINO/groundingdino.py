@@ -43,7 +43,6 @@ from .transformer import build_transformer
 from .utils import MLP, ContrastiveEmbed
 
 from blueglass.features import intercept_manager
-from blueglass.structures.constants import FeaturePatterns
 from blueglass.configs.defaults import BLUEGLASSConf
 
 

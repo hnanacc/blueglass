@@ -1,0 +1,23 @@
+-
+  name: Occluded
+  type: switch
+  tag: o
+-
+  name: Truncated
+  type: switch
+  tag: t
+-
+  name: Traffic Light Color
+  type: list
+  values:
+    - NA
+    - G
+    - Y
+    - R
+  tagPrefix: ""
+  tagSuffixes:
+    - ""
+    - g
+    - y
+    - r
+  tag: t

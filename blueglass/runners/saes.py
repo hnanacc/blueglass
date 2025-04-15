@@ -240,7 +240,7 @@ class SAERunner(Runner):
                 parts[1] = parts[1].removeprefix(substr)
             return "/".join(parts)
 
-        losses_dict, metric_dict, visual_metric_dict, extras_dict = {}, {}, {}, {}
+        losses_dict, metrics_dict, visual_metrics_dict, extras_dict = {}, {}, {}, {}
 
         reduced_records = defaultdict(list)
 
@@ -278,8 +278,8 @@ class SAERunner(Runner):
                 }
 
                 # Update target dicts
-                visual_metric_dict.update(visual_metrics)
-                metric_dict.update(non_visual_metrics)
+                visual_metrics_dict.update(visual_metrics)
+                metrics_dict.update(non_visual_metrics)
                 continue
 
         extras_dict = {
@@ -295,8 +295,8 @@ class SAERunner(Runner):
         if len(losses_dict) > 0:
             losses_dict["losses_reduced"] = sum(losses_dict.values())
 
-        if len(metric_dict) > 0:
-            metric_dict["metric_fitness"] = sum(metric_dict.values())
+        if len(metrics_dict) > 0:
+            metrics_dict["metric_fitness"] = sum(metrics_dict.values())
 
             # Computing metric fitness based on each sae
             metric_fitness_dict = defaultdict(int)
@@ -309,10 +309,9 @@ class SAERunner(Runner):
                     prefix = key.split("/")[0]
                     metric_fitness_dict[f"metric_reduced/{prefix}"] += value
 
-            metric_dict = metric_dict | metric_fitness_dict
+            metrics_dict = metrics_dict | metric_fitness_dict
 
-        return extras_dict, losses_dict, metric_dict, visual_metric_dict
-        # return losses_dict, metric_dict, visual_metric_dict, extras_dict
+        return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 
     def checkpoint(self):
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."

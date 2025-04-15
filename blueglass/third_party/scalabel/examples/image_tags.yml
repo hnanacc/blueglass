@@ -1,0 +1,56 @@
+-
+  name: Weather
+  type: list
+  values:
+    - NA
+    - Rainy
+    - Snowy
+    - Clear
+    - Overcast
+    - Partly Cloudy
+    - Foggy
+  tagPrefix: w
+  tagSuffixes:
+    - ""
+    - r
+    - s
+    - c
+    - o
+    - p
+    - f
+
+-
+  name: Scene
+  type: list
+  values:
+    - NA
+    - Tunnel
+    - Residential
+    - Parking Lot
+    - City Street
+    - Gas Stations
+    - Highway
+  tagPrefix: s
+  tagSuffixes:
+    - ""
+    - t
+    - r
+    - p
+    - c
+    - g
+    - h
+
+-
+  name: Timeofday
+  type: list
+  values:
+    - NA
+    - Daytime
+    - Night
+    - Dawn/Dusk
+  tagPrefix: t
+  tagSuffixes:
+    - ""
+    - day
+    - n
+    - daw

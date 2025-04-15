@@ -1,0 +1,38 @@
+-
+  name: Type
+  type: list
+  values:
+    - NA
+    - Single
+    - Double
+  tagPrefix: t
+  tagSuffixes:
+    - ""
+    - s
+    - d
+
+-
+  name: Continuity
+  type: list
+  values:
+    - NA
+    - Full
+    - Dashed
+  tagPrefix: c
+  tagSuffixes:
+    - ""
+    - f
+    - d
+
+-
+  name: Direction
+  type: list
+  values:
+    - NA
+    - Parallel
+    - Vertical
+  tagPrefix: d
+  tagSuffixes:
+    - ""
+    - p
+    - v

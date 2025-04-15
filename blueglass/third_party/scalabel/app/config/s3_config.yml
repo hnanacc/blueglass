@@ -1,0 +1,8 @@
+---
+http:
+    port: 8686
+storage:
+    data: "us-west-2:scalabel-unit-testing/data"
+    type: "s3"
+    itemDir: "./"
+...
