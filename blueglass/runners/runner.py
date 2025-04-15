@@ -34,6 +34,7 @@ from .utils import BestTracker
 
 logger = setup_blueglass_logger(__name__)
 
+
 class Runner:
     def __init__(self, conf: BLUEGLASSConf):
         self.conf = conf
@@ -47,8 +48,8 @@ class Runner:
         self.eval_period = conf.runner.eval_period
         self.logs_period = conf.runner.logs_period
         self.ckpt_period = conf.runner.ckpt_period
-        self.precision   = getattr(torch, conf.runner.precision)
-        
+        self.precision = getattr(torch, conf.runner.precision)
+
         assert (
             self.eval_period >= self.logs_period
         ), "invalid eval period and logs period, logs must be smaller than eval."

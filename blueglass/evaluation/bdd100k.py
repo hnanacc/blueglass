@@ -5,6 +5,7 @@ import os
 from collections import OrderedDict
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from itertools import chain
+
 # from scalabel.eval.detect import evaluate_det
 # from scalabel.label.io import load
 # from scalabel.label.typing import Config, Frame
@@ -45,6 +46,7 @@ CONFIG = {
         {"name": "traffic sign"},
     ],
 }
+
 
 class BDD100kEvaluator(DatasetEvaluator):
     def __init__(

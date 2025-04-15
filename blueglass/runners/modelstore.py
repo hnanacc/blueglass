@@ -106,7 +106,7 @@ class ModelstoreRunner(Runner):
             metrics_dict = metrics_dict | metric_fitness_dict
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
-        
+
     def run_step(self, batched_inputs: Dict[str, Any]) -> Dict[str, Any]:
 
         if self.step <= self.warmup_steps:
@@ -117,19 +117,21 @@ class ModelstoreRunner(Runner):
                 f"[Warmup Step {self.step}/{self.warmup_steps}, LR: {current_lr:.4f}"
             )
             return _return
-        
+
         with autocast("cuda", dtype=self.precision):
             records = self.model(batched_inputs)
 
         self.optimizer.zero_grad()
-        
-        loss = records.pop("loss")
-                
+
+        loss = records.pop("loss/loss")
+
         assert isinstance(loss, Tensor), "received non-tensor loss."
-        
+
         self.grad_scaler.scale(loss).backward()
         self.grad_scaler.unscale_(self.optimizer)
-        nn.utils.clip_grad_norm_(self.model.parameters(), self.conf.runner.max_grad_norm)
+        nn.utils.clip_grad_norm_(
+            self.model.parameters(), self.conf.runner.max_grad_norm
+        )
         self.grad_scaler.step(self.optimizer)
         self.grad_scaler.update()
         self.scheduler.step()
