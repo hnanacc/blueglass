@@ -39,6 +39,8 @@ class Runner:
     def __init__(self, conf: BLUEGLASSConf):
         self.conf = conf
 
+        self.runner_name = str(self.conf.runner.name)
+        self.runner_model_name = str(self.conf.model.name)
         self.model: nn.Module
 
         self.step = 1
@@ -202,9 +204,12 @@ class Runner:
             f"losses_reduced: {losses_dict['losses_reduced']:.4f}. "
         )
 
-    def checkpoint(self):
-        assert hasattr(self, "checkpointer"), "checkpointer not initialized."
-        self.checkpointer.save(f"model_{self.step}")
+    def _checkpoint(self, save_locally: bool = False):
+        if save_locally:
+            assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+            self.checkpointer.save(f"model_{self.step}")
+        else:
+            logger.info("Checkpointing to storage locally is set to False.")
 
     def run_step(self, batched_inputs: List[Dict[str, Any]]) -> Dict[str, Any]:
         raise NotImplementedError("Override in child class.")
@@ -294,3 +299,21 @@ class Runner:
         if isinstance(model, nn.parallel.DistributedDataParallel):
             return model.module
         return model
+
+    def checkpoint(self):
+        assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+        self._checkpoint(save_locally=self.conf.runner.save_ckpt_locally)
+        if self.conf.experiment.use_wandb:
+            checkpoint_name = f"model_{self.step}"
+            basename = "{}.pth".format(checkpoint_name)
+            save_file = os.path.join(self.checkpointer.save_dir, basename)
+
+            artifact = wandb.Artifact(
+                name=f"{self.runner_model_name}-step-{self.step}",  # Unique name per checkpoint
+                type=self.runner_name,
+                description=f"Model checkpoint at step {self.step}",
+                metadata={"step": self.step, "framework": "PyTorch"},
+            )
+            # Add the checkpoint file
+            artifact.add_file(str(save_file))
+            wandb.log_artifact(artifact)

@@ -85,22 +85,23 @@ class RunnerConf:
     name: Runner = Runner.MODELSTORE
     mode: RunnerMode = RunnerMode.TEST
 
-    max_steps: int = 50_000
+    max_steps: int = 100_000
     logs_period: int = 1
-    eval_period: int = 100
-    patch_eval_period: int = 200
-    ckpt_period: int = 100
+    eval_period: int = 1000
+    patch_eval_period: int = 2000
+    ckpt_period: int = 1000
     resume: bool = False
+    save_ckpt_locally: bool = field(default=False)
 
     optimizer: Optimizer = Optimizer.ADAMW
     warmup_steps: int = 1
     grad_acc_steps: int = 1
-    lr: float = 3e-4
+    lr: float = 1e-4
     betas: Tuple[float, float] = (0.9, 0.99)
     eps: float = 5e-7
     weight_decay: float = 1e-4
     max_grad_norm: float = 1.0
-    precision: Precision = Precision.BFLOAT16
+    precision: Precision = Precision.FLOAT32
 
     scheduler: Scheduler = Scheduler.MULTISTEP
     milestones: List[int] = field(default_factory=lambda: [40_000, 45_000, 49_000])

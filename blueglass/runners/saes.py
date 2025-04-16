@@ -312,21 +312,3 @@ class SAERunner(Runner):
             metrics_dict = metrics_dict | metric_fitness_dict
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
-
-    def checkpoint(self):
-        assert hasattr(self, "checkpointer"), "checkpointer not initialized."
-        super().checkpoint()
-        if self.conf.experiment.use_wandb:
-            checkpoint_name = f"model_{self.step}"
-            basename = "{}.pth".format(checkpoint_name)
-            save_file = os.path.join(self.checkpointer.save_dir, basename)
-
-            artifact = wandb.Artifact(
-                name=f"saes-step-{self.step}",  # Unique name per checkpoint
-                type="sae model",
-                description=f"Model checkpoint at step {self.step}",
-                metadata={"step": self.step, "framework": "PyTorch"},
-            )
-            # Add the checkpoint file
-            artifact.add_file(str(save_file))
-            wandb.log_artifact(artifact)
