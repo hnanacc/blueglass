@@ -1,0 +1,44 @@
+name: Test
+
+on:
+  - push
+  - pull_request
+  - workflow_call
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}, ${{ matrix.install_from }}, ${{ matrix.numpy }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        install_from: [source, sdist]
+        numpy: [oldest-supported-numpy, numpy<2, numpy>=2.0.0rc1]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Fix windows symlink
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: rm ./PythonAPI/common && cp -r ./common ./PythonAPI
+
+      - name: Install from source
+        if: matrix.install_from == 'source'
+        run: |
+          pip install ./PythonAPI '${{ matrix.numpy }}'
+          python -c "import numpy as np; print(np.__version__)"
+
+      - name: Install from sdist
+        if: matrix.install_from == 'sdist'
+        shell: bash
+        run: |
+          pipx run build --sdist ./PythonAPI
+          pip install ./PythonAPI/dist/*.tar.gz '${{ matrix.numpy }}'
+          python -c "import numpy as np; print(np.__version__)"
+
+      - name: Run test cases
+        run: python tests/test_cases.py
