@@ -65,6 +65,19 @@ class Runner:
         conf: BLUEGLASSConf,
         optimizer: Optimizer,
     ) -> LRScheduler:
+        """
+        Build a learning rate scheduler based on configuration.
+        
+        Args:
+            conf: Configuration object containing scheduler settings
+            optimizer: The optimizer to schedule
+            
+        Returns:
+            LRScheduler: Configured learning rate scheduler
+            
+        Raises:
+            ValueError: If an unsupported scheduler type is specified
+        """
         if conf.runner.scheduler == "multistep":
             return optim.lr_scheduler.MultiStepLR(optimizer, conf.runner.milestones)
         if conf.runner.scheduler == "cosine":
@@ -204,12 +217,9 @@ class Runner:
             f"losses_reduced: {losses_dict['losses_reduced']:.4f}. "
         )
 
-    def _checkpoint(self, save_locally: bool = False):
-        if save_locally:
-            assert hasattr(self, "checkpointer"), "checkpointer not initialized."
-            self.checkpointer.save(f"model_{self.step}")
-        else:
-            logger.info("Checkpointing to storage locally is set to False.")
+    def _checkpoint(self):
+        assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+        self.checkpointer.save(f"model_{self.step}")
 
     def run_step(self, batched_inputs: List[Dict[str, Any]]) -> Dict[str, Any]:
         raise NotImplementedError("Override in child class.")
@@ -302,7 +312,7 @@ class Runner:
 
     def checkpoint(self):
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
-        self._checkpoint(save_locally=self.conf.runner.save_ckpt_locally)
+        self._checkpoint()
         if self.conf.experiment.use_wandb:
             checkpoint_name = f"model_{self.step}"
             basename = "{}.pth".format(checkpoint_name)
@@ -317,3 +327,9 @@ class Runner:
             # Add the checkpoint file
             artifact.add_file(str(save_file))
             wandb.log_artifact(artifact)
+        save_locally=self.conf.runner.save_ckpt_locally
+        if save_locally:
+            logger.info("Checkpointing to storage locally is set to True, hence saving it locally.")
+        else:
+            os.remove(os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth"))
+            logger.info("Checkpointing to storage locally is set to False, hence deleting after saving it in wandb.")
