@@ -312,6 +312,9 @@ class Runner:
 
     def checkpoint(self):
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+        if not comm.is_main_process():
+            return
+        
         self._checkpoint()
         if self.conf.experiment.use_wandb:
             checkpoint_name = f"model_{self.step}"
