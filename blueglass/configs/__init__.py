@@ -47,6 +47,7 @@ from .probes import register_probes
 from .saes import register_saes
 from .interp import register_interp
 from .knockoff_red_attn_wt import register_layerknockoff
+from .sae_decoder_cluster import register_decoder_cluster
 
 
 logger = setup_blueglass_logger(__name__)
@@ -67,6 +68,7 @@ def register_all():
     safe_register(register_saes, "SAEs")
     safe_register(register_interp, "Interpretability")
     safe_register(register_layerknockoff, "Layer Knockoff")
+    safe_register(register_decoder_cluster, "Decoder Clustering")
 
 
 register_all()

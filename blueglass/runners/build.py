@@ -10,6 +10,7 @@ from .features_extract import FeatureExtractRunner
 from .probes_linear_vlm import VLMLinearProbeRunner
 from .probes_linear_sae import SAELinearProbeRunner
 from .saes import SAERunner
+from .sae_decoder_cluster import DecoderClusterRunner
 
 logger = setup_blueglass_logger(__name__)
 
@@ -22,6 +23,7 @@ def build_runner(conf: BLUEGLASSConf) -> Runner:
         RunnerType.SAE_LINEAR_PROBE: SAELinearProbeRunner,
         RunnerType.SAE: SAERunner,
         RunnerType.LAYERS_PATCH: LayersPatchRunner,
+        RunnerType.DECODER_CLUSTER: DecoderClusterRunner,
     }
 
     runner_class = runner_classes.get(conf.runner.name)

@@ -29,3 +29,6 @@ SciencePlots
 google-genai
 openai
 shapely
+scikit-learn
+hdbscan
+umap-learn

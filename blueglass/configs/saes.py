@@ -4,7 +4,7 @@
 import os.path as osp
 from dataclasses import dataclass, field
 from hydra.core.config_store import ConfigStore
-
+from typing import Dict, Any, Optional, List, Iterator, Union
 from blueglass.configs import *
 
 from typing import List, Optional
@@ -48,6 +48,9 @@ class SAEFeatureConf(FeatureConf):
     )
     use_cached: bool = True
     batch_size: int = 5000
+    filter_column_scheme: Optional[Dict[str, Union[int, float, str]]] = field(
+        default_factory=lambda: {"conf_msk": 1}
+    )
 
 
 def register_saes():

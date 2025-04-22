@@ -10,9 +10,11 @@ from blueglass.utils.logger_utils import setup_blueglass_logger
 import pandas as pd
 from collections import deque
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import pyarrow.dataset as ds
 import torch
+from functools import lru_cache
 from collections import OrderedDict
 from blueglass.configs import BLUEGLASSConf, Model, Datasets
 from blueglass.utils.feature import (
@@ -20,7 +22,7 @@ from blueglass.utils.feature import (
     fetch_remote_feature_names,
     prepare_feature_disk_path,
 )
-from typing import Dict, Any, Optional, List, Iterator
+from typing import Dict, Any, Optional, List, Iterator, Union
 from .schema import build_arrow_schema
 from .types import DistFormat
 
@@ -29,18 +31,60 @@ logger = setup_blueglass_logger(__name__)
 
 class Reader:
     def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model):
+        self.conf = conf
         self.batch_size = conf.feature.batch_size
         self.path = prepare_feature_disk_path(conf, name, dataset, model)
         self.stream = ds.dataset(self.path, format="parquet")
+        self.column_filters = conf.feature.filter_column_scheme or {}
+
+    @lru_cache(maxsize=None)
+    def _build_filter_expr(self):
+
+        # return None
+        if not self.column_filters:
+            return None
+
+        schema = self.stream.schema
+        missing = [col for col in self.column_filters if col not in schema.names]
+        if missing:
+            raise ValueError(f"Filter columns not found in schema: {missing}")
+
+        expressions = []
+
+        for col, val in self.column_filters.items():
+            field = schema.field(col)
+            field_type = field.type
+            base_type = (
+                field_type.storage_type
+                if isinstance(field_type, pa.ExtensionType)
+                else field_type
+            )
+
+            # Handle bool explicitly
+            if pa.types.is_boolean(base_type):
+                arrow_val = pa.scalar(bool(val))
+            else:
+                arrow_val = pa.scalar(val, type=base_type)
+
+            field_expr = pc.field(col)
+            expressions.append(pc.field(col) == arrow_val)
+
+        # Combine expressions
+        filt = pc.and_(*expressions) if len(expressions) > 1 else expressions[0]
+
+        return filt
 
     def infer_schema(self) -> pa.Schema:
         return self.stream.schema
 
     def num_records(self) -> int:
-        return self.stream.count_rows(batch_size=1)
+        filt = self._build_filter_expr()
+        return self.stream.count_rows(filter=filt, batch_size=1)
 
     def __iter__(self) -> Iterator[pa.RecordBatch]:
-        yield from self.stream.to_batches(batch_size=self.batch_size)
+        filt = self._build_filter_expr()
+        scanner = self.stream.scanner(filter=filt, batch_size=self.batch_size)
+        yield from scanner.to_batches()
 
 
 class Writer:

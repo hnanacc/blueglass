@@ -16,7 +16,7 @@ from typing import Iterable, List, Dict, Any, Tuple, Union
 from blueglass.configs import BLUEGLASSConf, Model, FeaturePattern, Precision
 from blueglass.runners import Runner
 from blueglass.modeling import build_model
-from blueglass.modeling.saes import build_sae, GroupedSAE
+from blueglass.modeling.saes import GroupedSAE
 from blueglass.evaluation import SAEEvaluator
 from blueglass.features import (
     FeatureDataset,

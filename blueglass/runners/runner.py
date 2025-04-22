@@ -67,14 +67,14 @@ class Runner:
     ) -> LRScheduler:
         """
         Build a learning rate scheduler based on configuration.
-        
+
         Args:
             conf: Configuration object containing scheduler settings
             optimizer: The optimizer to schedule
-            
+
         Returns:
             LRScheduler: Configured learning rate scheduler
-            
+
         Raises:
             ValueError: If an unsupported scheduler type is specified
         """
@@ -108,8 +108,6 @@ class Runner:
         os.makedirs(path, exist_ok=True)
         return Checkpointer(model, path, optimizer=optimizer)
 
-    # TODO: Fix num_workers
-
     def build_infer_dataloader(self, conf: BLUEGLASSConf) -> DataLoader:
         return build_test_dataloader(
             conf.dataset.infer, conf.dataset.batch_size, conf.num_data_workers
@@ -133,7 +131,7 @@ class Runner:
 
     @lru_cache
     def prepare_filter_scheme(self, remove_io: bool = True) -> str:
-        patterns = self.conf.feature.patterns
+        patterns = self.conf.feature.patterns.copy()
         if remove_io:
             patterns.remove(FeaturePattern.IO)
         patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
@@ -254,7 +252,7 @@ class Runner:
         )
         return d, m, e
 
-    def train(self):
+    def train(self) -> None:
         (
             self.dataloader,
             self.model,
@@ -289,7 +287,7 @@ class Runner:
         dataloader, model, evaluator = self.initialize_test_attrs()
         return inference_on_dataset(model, dataloader, evaluator)
 
-    def infer(self):
+    def infer(self) -> None:
         self.dataloader = self.build_infer_dataloader(self.conf)
         self.model.eval()
         for self.step, data in enumerate(self.dataloader):
@@ -310,8 +308,11 @@ class Runner:
             return model.module
         return model
 
-    def checkpoint(self):
+    def checkpoint(self) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+        if not comm.is_main_process():
+            return
+
         self._checkpoint()
         if self.conf.experiment.use_wandb:
             checkpoint_name = f"model_{self.step}"
@@ -327,9 +328,15 @@ class Runner:
             # Add the checkpoint file
             artifact.add_file(str(save_file))
             wandb.log_artifact(artifact)
-        save_locally=self.conf.runner.save_ckpt_locally
+        save_locally = self.conf.runner.save_ckpt_locally
         if save_locally:
-            logger.info("Checkpointing to storage locally is set to True, hence saving it locally.")
+            logger.info(
+                "Checkpointing to storage locally is set to True, hence saving it locally."
+            )
         else:
-            os.remove(os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth"))
-            logger.info("Checkpointing to storage locally is set to False, hence deleting after saving it in wandb.")
+            os.remove(
+                os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
+            )
+            logger.info(
+                "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
+            )

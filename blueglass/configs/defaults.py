@@ -4,6 +4,7 @@
 import os
 from enum import Enum
 from dataclasses import dataclass, field
+from typing import Dict, Any, Optional, List, Iterator, Union
 import torch
 
 from typing import Literal, Optional, List, Tuple, Any
@@ -131,6 +132,9 @@ class SAEConf:
     min_threshold_latents_dead: int = 10_000
     threshold_latents_dense: float = 0.5
 
+    config_path: Optional[str] = None
+    checkpoint_path: Optional[str] = None
+
 
 @dataclass
 class ProbeConf:
@@ -164,6 +168,7 @@ class FeatureConf:
 
     batch_size: int = 512
     compute_confusion: bool = False
+    filter_column_scheme: Optional[Dict[str, Union[int, float, str]]] = None
     max_rows_per_part: int = 500_000
 
 
