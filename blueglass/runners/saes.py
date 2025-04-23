@@ -11,6 +11,7 @@ from torch import Tensor, nn, autocast
 from torch.optim import Optimizer, AdamW
 from functools import lru_cache
 from collections import defaultdict, ChainMap
+from .utils import maybe_strip_ddp
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from typing import Iterable, List, Dict, Any, Tuple, Union
 from blueglass.configs import BLUEGLASSConf, Model, FeaturePattern, Precision
@@ -139,7 +140,7 @@ class SAERunner(Runner):
 
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
-        model = self.maybe_strip_ddp(self.model)
+        model = maybe_strip_ddp(self.model)
         assert isinstance(model, GroupedSAE), "Expected module to be GroupedSAE"
         model.set_decoder_to_unit_norm()
 
@@ -150,7 +151,7 @@ class SAERunner(Runner):
 
     def _build_patchers(self) -> Dict[str, Patcher]:
 
-        model = self.maybe_strip_ddp(self.model)
+        model = maybe_strip_ddp(self.model)
 
         built_patchers = {
             (t_name := model.transform_name(name, reverse=True)): SAEPatcher(
@@ -167,7 +168,7 @@ class SAERunner(Runner):
         fd = build_feature_dataloader(
             self.conf, self.conf.dataset.test, fm, "test", self.prepare_filter_scheme()
         )
-        fe = SAEEvaluator(self.conf)
+        fe = SAEEvaluator(self.conf, self.step)
         logger.info("Evaluation for SAE metrics.")
         records_feature = inference_on_dataset(self.model, fd, fe)
 
@@ -205,7 +206,7 @@ class SAERunner(Runner):
             # Step 2a. Measure metrics with patcher on test data and feature model.
             test_patcher = self.patcher_test()
             records_patcher = records_patcher | test_patcher
-
+            
         return {**records_feature, **records_patcher}
 
     def patcher_test(self) -> Dict[str, Any]:

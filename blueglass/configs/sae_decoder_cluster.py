@@ -15,12 +15,12 @@ class DecoderClusterVariantConf(SAEConf):
     variant: SAEVariant = SAEVariant.TOPK_FAST
     topk: int = 32
     config_path: str = (
-        "/home/qutub/github_projects/blueglass/trained_saes/model_2000.json"
+        "/home/squtub/github_repos/blueglass/trained_saes/model_2000.json"
     )
     checkpoint_path: str = (
-        "/home/qutub/github_projects/blueglass/trained_saes/model_2000.pth"  # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
+        "/home/squtub/github_repos/blueglass/trained_saes/model_2000.pth"  # 
     )
-
+    # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
 
 @dataclass
 class DecoderClusterRunnerConf(RunnerConf):

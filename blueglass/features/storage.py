@@ -67,7 +67,7 @@ class Reader:
                 arrow_val = pa.scalar(val, type=base_type)
 
             field_expr = pc.field(col)
-            expressions.append(pc.field(col) == arrow_val)
+            expressions.append(field_expr == arrow_val)
 
         # Combine expressions
         filt = pc.and_(*expressions) if len(expressions) > 1 else expressions[0]

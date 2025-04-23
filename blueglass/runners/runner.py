@@ -300,14 +300,6 @@ class Runner:
             if self.step % self.logs_period == 0:
                 logger.info(f"Processed {self.step} / {len(self.dataloader)}")
 
-    def maybe_strip_ddp(
-        self,
-        model: Union[nn.Module, nn.parallel.DistributedDataParallel],
-    ) -> Union[nn.Module, nn.parallel.DistributedDataParallel]:
-        if isinstance(model, nn.parallel.DistributedDataParallel):
-            return model.module
-        return model
-
     def checkpoint(self) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
         if not comm.is_main_process():

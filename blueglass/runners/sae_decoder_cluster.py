@@ -23,6 +23,7 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.amp.grad_scaler import GradScaler
 
+from .utils import maybe_strip_ddp
 from blueglass.third_party.detectron2.utils import comm
 from blueglass.third_party.detectron2.evaluation import (
     inference_on_dataset,
@@ -329,23 +330,15 @@ class DecoderClusterRunner(SAERunner):
             f"losses_reduced: {losses_dict['losses_reduced']:.4f}. "
         )
 
-    def maybe_strip_ddp(
-        self,
-        model: Union[nn.Module, nn.parallel.DistributedDataParallel],
-    ) -> Union[nn.Module, nn.parallel.DistributedDataParallel]:
-        if isinstance(model, nn.parallel.DistributedDataParallel):
-            return model.module
-        return model
-
     def sae_decoder_cluster_knockoff(self) -> None:
         model = copy.deepcopy(self.vanilla_sae_model)
-        model = self.maybe_strip_ddp(model)
+        model = maybe_strip_ddp(model)
 
         records = {}
         cluster_knockoff_indices = {}
         clustering = self.conf.runner.cluster_method
         save_file = os.path.join(
-            "/home/qutub/github_projects/blueglass/test_plots", clustering
+            "blueglass_test_plots", clustering
         )
         os.makedirs(save_file, exist_ok=True)
         if self.step == 1:

@@ -90,6 +90,7 @@ class RunnerConf:
     logs_period: int = 1
     eval_period: int = 1000
     patch_eval_period: int = 2000
+    visuals_eval_period: int = 200
     ckpt_period: int = 1000
     resume: bool = False
     save_ckpt_locally: bool = field(default=False)
