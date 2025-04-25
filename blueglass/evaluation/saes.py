@@ -5,11 +5,10 @@ from typing import Dict, Any
 from torch import Tensor
 import numpy as np
 import torch
+from collections import defaultdict
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
-from collections import defaultdict
 
-import umap.umap_ as umap
 from blueglass.runners.utils import maybe_strip_ddp
 from blueglass.configs import BLUEGLASSConf
 from blueglass.structures.types import is_comm_dict, is_comm_list_of_dict
@@ -109,35 +108,6 @@ class SAEEvaluator(DatasetEvaluator):
         #     plt.close("all")
         #     raise RuntimeError(f"Visualization failed: {str(e)}")
         return {}
-
-    def plot_reduced_decoders(self, sae, direc="row") -> plt.Figure:
-        decoder_weights = sae.decoder.detach().cpu().numpy()  # [N, D]
-        if direc=="column":
-            decoder_weights = decoder_weights.T
-        reducer = umap.UMAP(n_components=2, random_state=42)
-        umap_proj = reducer.fit_transform(decoder_weights)
-        fig, ax = plt.subplots(figsize=(10, 8))
-        ax.set_title(f"SAE Decoder using UMap ({direc})")
-        ax.set_xlabel("UMAP-1")
-        ax.set_ylabel("UMAP-2")
-        plt.tight_layout()
-        
-        return fig
-
-    def visualize_decoder_weights(self, direc="row") -> Dict[str, Figure]:
-        """
-        Visualizes decoder weights using reduced UMAP.
-
-        Returns:
-            Dictionary containing decoder weight figures
-        """
-        
-        records = {}
-        model = maybe_strip_ddp(model)
-        for name, sae in model.eval().sae_per_name.items():
-            fig = self.plot_reduced_decoders(sae, direc=direc)
-            records[f"{name}/{direc}"] = fig
-        return records
     
     def evaluate(self) -> Dict[str, Any]:
         comm.synchronize()
@@ -168,15 +138,6 @@ class SAEEvaluator(DatasetEvaluator):
                 latents_fire_count, latents_dead_since
             )
             visuals = {**visuals, **_visuals}
-            
-            _visuals = self.visualize_decoder_weights(direc="row")
-            visuals = {**visuals, **_visuals}
-
-            _visuals = self.visualize_decoder_weights(direc="column")
-            visuals = {**visuals, **_visuals}
-            
-            visuals = {f"visual_metrics/{k}": v for k, v in visuals.items()}
-            # TODO Fix visual plots
 
         # change the name to prevent conflict with train
         # losses while parsing for metrics in inference.

@@ -198,6 +198,8 @@ class Runner:
             for i, group in enumerate(self.optimizer.param_groups)
         }
         if self.conf.experiment.use_wandb:
+            if len(visual_metric_dict) > 0:
+                visual_metric_dict = {k: wandb.Image(v) for k, v in visual_metric_dict.items()}
             wandb.log(
                 {
                     **losses_dict,
@@ -269,9 +271,8 @@ class Runner:
             if self.step <= self.warmup_steps:
                 continue
 
-            if self.step % self.eval_period == 0:
-                records_dict["metrics"] = self.test()
-                self.model = self.model.train()
+            records_dict["metrics"] = self.test()
+            self.model = self.model.train()
 
             if self.step % self.logs_period == 0:
                 self.register_metrics(records_dict)
@@ -284,8 +285,11 @@ class Runner:
             gc.collect()
 
     def test(self) -> Dict[str, Any]:
-        dataloader, model, evaluator = self.initialize_test_attrs()
-        return inference_on_dataset(model, dataloader, evaluator)
+        records_test_dict = {}
+        if self.step % self.eval_period == 0:
+            dataloader, model, evaluator = self.initialize_test_attrs()
+            records_test_dict = inference_on_dataset(model, dataloader, evaluator)
+        return records_test_dict
 
     def infer(self) -> None:
         self.dataloader = self.build_infer_dataloader(self.conf)
