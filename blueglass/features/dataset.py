@@ -280,6 +280,7 @@ def build_feature_dataloader(
     model: Union[Model, nn.Module],
     mode: Literal["train", "test"],
     filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",
+    num_workers: int = 1,
 ) -> DataLoader:
     ds = FeatureDataset(conf, dataset, model, mode, filter_scheme)
     mp = ds.mapper
@@ -292,4 +293,4 @@ def build_feature_dataloader(
             .map(lambda batch: mp(batch))
         )
 
-    return DataLoader(ds, shuffle=(mode == "train"), batch_size=None)
+    return DataLoader(ds, shuffle=(mode == "train"), batch_size=None, num_workers=num_workers, persistent_workers=True, pin_memory=True, prefetch_factor=2)

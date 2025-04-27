@@ -4,6 +4,7 @@
 import os
 import json
 import wandb
+import concurrent.futures
 from omegaconf import OmegaConf
 import numpy as np
 import torch
@@ -17,7 +18,7 @@ from functools import lru_cache
 from collections import defaultdict, ChainMap
 from .utils import maybe_strip_ddp
 from blueglass.utils.logger_utils import setup_blueglass_logger
-from typing import Iterable, List, Dict, Any, Tuple, Union
+from typing import Iterable, List, Dict, Any, Tuple, Union, Optional
 from blueglass.configs import BLUEGLASSConf, Model, FeaturePattern, Precision
 from blueglass.runners import Runner
 from blueglass.modeling import build_model
@@ -71,6 +72,7 @@ class SAERunner(Runner):
             self._prepare_model_for_store(conf),
             "train",
             self.prepare_filter_scheme(),
+            num_workers=self.conf.num_data_workers
         )
 
     def build_model(self, conf) -> nn.Module:
@@ -324,27 +326,38 @@ class SAERunner(Runner):
         reducer = umap.UMAP(n_components=2, random_state=42)
         umap_proj = reducer.fit_transform(decoder_weights)
         fig = plt.figure(figsize=(10, 8))
-        plt.title(f"SAE Decoder using UMap ({direc})")
-        plt.xlabel("UMAP-1")
-        plt.ylabel("UMAP-2")
-        plt.scatter(umap_proj[:, 0], umap_proj[:, 1], s=5, alpha=0.8)
-        plt.tight_layout()
+        fig, ax = plt.subplots(figsize=(10, 8))  # ✅ Create explicit Axes
+        
+        if umap_proj.shape[0] == 0 or np.isnan(umap_proj).any():
+            logger.warning(" Warning: UMAP projection is empty or NaN. Skipping plot.")
+            return fig
+
+        ax.set_title(f"SAE Decoder using UMap ({direc})")
+        ax.set_xlabel("UMAP-1")
+        ax.set_ylabel("UMAP-2")
+        ax.scatter(umap_proj[:, 0], umap_proj[:, 1], s=5, alpha=0.8)
+        fig.tight_layout()
 
         return fig
 
-    def visualize_decoder_weights(self, direc="row") -> Dict[str, Figure]:
-        """
-        Visualizes decoder weights using reduced UMAP.
-
-        Returns:
-            Dictionary containing decoder weight figures
-        """
-        
-        records = {}
+    def visualize_decoder_weights(self, direc="row") -> dict:
         model = maybe_strip_ddp(self.model)
-        for name, sae in model.eval().sae_per_name.items():
+        records = {}
+
+        # Helper to call plotter
+        def plot_one(name, sae):
             fig = self.plot_reduced_decoders(sae, direc=direc)
-            records[f"{name}/{direc}"] = fig
+            return (name, fig)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+            futures = []
+            for name, sae in model.eval().sae_per_name.items():
+                futures.append(executor.submit(plot_one, name, sae))
+
+            for future in concurrent.futures.as_completed(futures):
+                name, fig = future.result()
+                records[f"{name}/{direc}"] = fig
+
         return records
     
     def visualise_metrics(self) -> Dict[str, Any]:
