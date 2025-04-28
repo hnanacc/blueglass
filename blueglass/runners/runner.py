@@ -286,7 +286,7 @@ class Runner:
 
     def test(self) -> Dict[str, Any]:
         records_test_dict = {}
-        if self.step % self.eval_period == 0:
+        if self.step % self.eval_period == 0 or self.conf.runner.mode == "test":
             dataloader, model, evaluator = self.initialize_test_attrs()
             records_test_dict = inference_on_dataset(model, dataloader, evaluator)
         return records_test_dict

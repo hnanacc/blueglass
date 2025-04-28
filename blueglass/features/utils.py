@@ -11,7 +11,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 MAX_ROWS_PER_FILE = 500_000
 OLD_ROOT_DIR = "BlueLens/features_datasets"
 NEW_ROOT_DIR = "BlueLensPos/features_datasets"
-
+NEW_1_ROOT_DIR = "BlueLensPos_1/features_datasets"
 
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
@@ -75,7 +75,7 @@ def _process_single_file(args):
         return (part_file, False, traceback.format_exc())
 
 
-def filter_and_rewrite_BlueLens(conf, num_workers=8, root_dir="BlueLens/features_datasets"):
+def filter_and_rewrite_BlueLens(conf, num_workers=8, root_dir=NEW_ROOT_DIR):
     """
     Filters Parquet part files by conf_msk == True and rewrites them to a new location.
     
@@ -144,7 +144,7 @@ def process_single_folder(args):
     buffer = None
     new_part_counter = 0
 
-    new_folder = folder
+    new_folder = folder.replace(NEW_ROOT_DIR, NEW_1_ROOT_DIR)
     os.makedirs(new_folder, exist_ok=True)
 
     for part_file in part_files:
@@ -200,7 +200,6 @@ if __name__ == "__main__":
     conf = BLUEGLASSConf()
     num_workers = 75
     filter_and_rewrite_BlueLens(
-        root_dir=OLD_ROOT_DIR,
         conf=conf,
         num_workers=num_workers
     )
