@@ -33,8 +33,8 @@ logger = setup_blueglass_logger(__name__)
 
 
 class Reader:
-    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model):
-        self.batch_size = conf.feature.batch_size
+    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model, batch_size: int):
+        self.batch_size = batch_size
         self.path = prepare_feature_disk_path(conf, name, dataset, model)
         self.stream = ds.dataset(self.path, format="parquet")
 
@@ -155,8 +155,10 @@ class FeatureStorage:
         dataset: Datasets,
         model: Model,
         filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",
+        batch_size: int = 1,
     ):
         self.conf = conf
+        self.batch_size = batch_size
         self.dataset = dataset
         self.model = model
         self.filter_scheme = filter_scheme
@@ -227,7 +229,7 @@ class FeatureStorage:
         discover_feature_names = self._discover_feature_names()
         for name in discover_feature_names:
             if name not in self.reader_per_name:
-                _reader_per_name = Reader(self.conf, name, self.dataset, self.model)
+                _reader_per_name = Reader(self.conf, name, self.dataset, self.model, self.batch_size)
                 check_rows = _reader_per_name.stream.count_rows(batch_size=1)
                 if check_rows == 0:
                     logger.warning(

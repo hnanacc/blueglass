@@ -88,10 +88,10 @@ class RunnerConf:
 
     max_steps: int = 100_000
     logs_period: int = 1
-    eval_period: int = 1000
-    patch_eval_period: int = 2000
-    visuals_eval_period: int = 200
-    ckpt_period: int = 1000
+    eval_period: int = 500
+    patch_eval_period: int = 500
+    visuals_eval_period: int = 50
+    ckpt_period: int = 500
     resume: bool = False
     save_ckpt_locally: bool = field(default=False)
 
@@ -112,7 +112,7 @@ class RunnerConf:
 @dataclass
 class SAEConf:
     variant: SAEVariant = SAEVariant.TOPK
-    expansion_factor: int = 32
+    expansion_factor: int = 256
 
     use_feature_norm: bool = True
     use_feature_bias: bool = True
@@ -167,7 +167,8 @@ class FeatureConf:
     path: Optional[str] = None
     use_cached: bool = False
 
-    batch_size: int = 512
+    train_batch_size: int = 512
+    test_batch_size: int = 512
     compute_confusion: bool = False
     filter_column_scheme: Optional[Dict[str, Union[int, float, str]]] = None
     max_rows_per_part: int = 500_000

@@ -35,7 +35,7 @@ class GroundingDINO(nn.Module):
             conf.model.checkpoint_path is not None
         ), "missing checkpoint_path for Grounding DINO."
 
-        self.device = torch.device("cuda")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = load_model(
             conf.model.conf_path,
             conf.model.checkpoint_path,

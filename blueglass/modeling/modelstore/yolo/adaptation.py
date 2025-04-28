@@ -17,7 +17,7 @@ class YOLO_X(nn.Module):
 
         super().__init__()
         self.conf = conf
-        self.device = torch.device("cuda")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         assert conf.model.checkpoint_path is not None, "missing checkpoint path."
         self.model = YOLO(conf.model.checkpoint_path, task="detect").to(self.device)
         assert self.model.model is not None

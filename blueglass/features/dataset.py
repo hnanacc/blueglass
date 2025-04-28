@@ -53,10 +53,10 @@ class FeatureStream:
 
 class StorageStream(FeatureStream):
     def __init__(
-        self, conf: BLUEGLASSConf, dataset: Datasets, model: Model, filter_scheme: str
+        self, conf: BLUEGLASSConf, dataset: Datasets, model: Model, filter_scheme: str, batch_size: int
     ):
         super().__init__(conf, model, dataset, filter_scheme)
-        self.source = FeatureStorage(conf, dataset, model, filter_scheme)
+        self.source = FeatureStorage(conf, dataset, model, filter_scheme, batch_size)
 
     def mapper(self, batch_per_name: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         return self.source.format(batch_per_name)
@@ -81,7 +81,7 @@ class StorageStream(FeatureStream):
 
 
 class InterceptorStream(FeatureStream):
-    def __init__(self, conf, dataset: Datasets, model: nn.Module, filter_scheme: str):
+    def __init__(self, conf, dataset: Datasets, model: nn.Module, filter_scheme: str, batch_size: int):
         super().__init__(conf, model, dataset, filter_scheme)
         assert isinstance(
             model, nn.Module
@@ -89,7 +89,7 @@ class InterceptorStream(FeatureStream):
 
         self.dataset = dataset
         self.model = FeatureInterceptor(conf, model)
-        self.batch_size = conf.feature.batch_size
+        self.batch_size = batch_size
 
         self.feature_meta = None
         self.buffer_per_name: Dict[str, deque] = defaultdict(deque)
@@ -225,11 +225,14 @@ class FeatureDataset(IterableDataset):
         self.model = model
         self.mode = mode
         self.filter_scheme = filter_scheme
-        self.batch_size = conf.feature.batch_size
+        if mode == "train":
+            self.batch_size = conf.feature.train_batch_size
+        else:
+            self.batch_size = conf.feature.test_batch_size
         self.stream = (
-            InterceptorStream(conf, dataset, model, filter_scheme)
+            InterceptorStream(conf, dataset, model, filter_scheme, self.batch_size)
             if isinstance(model, nn.Module)
-            else StorageStream(conf, dataset, model, filter_scheme)
+            else StorageStream(conf, dataset, model, filter_scheme, self.batch_size)
         )
 
     def __len__(self):
