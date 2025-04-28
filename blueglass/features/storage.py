@@ -38,6 +38,7 @@ class PyArrowReader:
         self.path = prepare_feature_disk_path(conf, name, dataset, model)
         self.stream = ds.dataset(self.path, format="parquet")
 
+    @lru_cache
     def infer_schema(self) -> pa.Schema:
         return self.stream.schema
 
