@@ -155,8 +155,10 @@ class TopKFast(AutoEncoder):
         ctx["top_values"] = topk_values
         ctx["top_latents"] = top_indices
 
-        interims_topk = torch.zeros_like(interims).scatter(-1, top_indices, topk_values)
-
+        interims_topk = interims.clone()
+        interims_topk.zero_()
+        interims_topk.scatter_(-1, top_indices, topk_values)
+        
         return interims_topk, ctx
 
     def _loss_topk_aux(

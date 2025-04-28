@@ -296,4 +296,7 @@ def build_feature_dataloader(
             .map(lambda batch: mp(batch))
         )
 
-    return DataLoader(ds, shuffle=(mode == "train"), batch_size=None, num_workers=num_workers, persistent_workers=True, pin_memory=True, prefetch_factor=2)
+    if mode == "train":
+        return DataLoader(ds, shuffle=True, batch_size=None, num_workers=num_workers, persistent_workers=True, pin_memory=False, prefetch_factor=2)
+    else:
+        return DataLoader(ds, shuffle=False, batch_size=None)

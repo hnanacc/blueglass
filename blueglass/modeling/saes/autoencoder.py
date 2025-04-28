@@ -302,6 +302,7 @@ class AutoEncoder(nn.Module):
         cur_feature_seen_cnt = torch.tensor(
             true_features.shape[0], dtype=torch.int, device=self.device
         )
+        cur_feature_seen_cnt = cur_feature_seen_cnt.to(self.device)
         comm.all_reduce(cur_feature_seen_cnt)
         self.feature_seen_count += cur_feature_seen_cnt
 
@@ -315,12 +316,14 @@ class AutoEncoder(nn.Module):
             chunk_size=ROW_CHUNK_SIZE,
         )
 
+        cur_latents_fire_cnt = cur_latents_fire_cnt.to(self.device)
         comm.all_reduce(cur_latents_fire_cnt)
         self.latents_fire_count += cur_latents_fire_cnt
 
         cur_feature_seen_cnt = torch.tensor(
             interims.shape[0], dtype=torch.int, device=self.device
         )
+        cur_feature_seen_cnt = cur_feature_seen_cnt.to(self.device)
         comm.all_reduce(cur_feature_seen_cnt)
 
         self.latents_dead_since += cur_feature_seen_cnt
