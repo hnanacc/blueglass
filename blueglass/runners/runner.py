@@ -2,6 +2,7 @@
 # SPDX: Apache-2.0
 
 import os
+import uuid
 import gc
 import wandb
 from blueglass.utils.logger_utils import setup_blueglass_logger
@@ -52,6 +53,9 @@ class Runner:
         self.ckpt_period = conf.runner.ckpt_period
         self.precision = getattr(torch, conf.runner.precision)
 
+        unique_id = uuid.uuid4().hex[:8]  # Short UUID (8 characters)
+        self.conf.experiment.output_dir = f"{conf.experiment.output_dir}/{unique_id}/ckpts"
+        
         assert (
             self.eval_period >= self.logs_period
         ), "invalid eval period and logs period, logs must be smaller than eval."
@@ -306,6 +310,8 @@ class Runner:
 
     def checkpoint(self) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+        # All processes must reach here before proceeding
+        comm.synchronize()
         if not comm.is_main_process():
             return
 
