@@ -32,3 +32,4 @@ shapely
 scikit-learn
 hdbscan
 umap-learn
+uuid
