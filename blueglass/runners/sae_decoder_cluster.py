@@ -57,6 +57,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DecoderClusterRunner(SAERunner):
     def __init__(self, conf: BLUEGLASSConf):
+        super().__init__(conf)
         self.conf = conf
         self.runner_name = str(self.conf.runner.name)
         self.runner_model_name = str(self.conf.model.name)
@@ -94,7 +95,7 @@ class DecoderClusterRunner(SAERunner):
         self, conf: BlockingIOError, remove_io: bool = True
     ) -> str:
         patterns = conf.feature.patterns
-        if remove_io:
+        if remove_io and FeaturePattern.IO in patterns:
             patterns.remove(FeaturePattern.IO)
         patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
 
@@ -213,12 +214,20 @@ class DecoderClusterRunner(SAERunner):
         config = load_blueglass_from_wandb(
             self.conf.sae.config_path, original_config=self.conf
         )
+        filters = ["decoder_mlp"]
+        patterns = config.feature.patterns
+        config.feature.patterns = [p for p in patterns if any(f in p.value for f in filters)]
 
         m = self.build_saes_model(config)
         ckpt = torch.load(
             self.conf.sae.checkpoint_path, map_location="cpu", weights_only=False
         )
-        m.load_state_dict(ckpt["model"])
+        missing_keys, unexpected_keys = m.load_state_dict(ckpt["model"], strict=False)
+        if len(missing_keys) > 0 or len(unexpected_keys) > 0:
+            logger.warning(
+                f"Missing keys in state_dict: {missing_keys}. "
+                f"Unexpected keys in state_dict: {unexpected_keys}."
+            )
         m.eval()
 
         return m
@@ -338,7 +347,7 @@ class DecoderClusterRunner(SAERunner):
         cluster_knockoff_indices = {}
         clustering = self.conf.runner.cluster_method
         save_file = os.path.join(
-            "blueglass_test_plots", clustering
+            self.conf.experiment.output_dir, "sae_decoder_cluster", clustering
         )
         os.makedirs(save_file, exist_ok=True)
         if self.step == 1:

@@ -54,7 +54,7 @@ class Runner:
         self.precision = getattr(torch, conf.runner.precision)
 
         unique_id = uuid.uuid4().hex[:8]  # Short UUID (8 characters)
-        self.conf.experiment.output_dir = f"{conf.experiment.output_dir}/{unique_id}/ckpts"
+        self.conf.experiment.output_dir = f"{conf.experiment.output_dir}/{unique_id}"
         
         assert (
             self.eval_period >= self.logs_period
@@ -63,6 +63,7 @@ class Runner:
         assert (
             self.eval_period % self.logs_period == 0
         ), "invalid eval period and logs period, must be divisible."
+        assert isinstance(self.precision, torch.dtype), "Invalid precision."
 
     def build_scheduler(
         self,
