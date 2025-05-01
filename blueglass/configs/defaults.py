@@ -88,10 +88,10 @@ class RunnerConf:
 
     max_steps: int = 100_000
     logs_period: int = 1
-    eval_period: int = 500
+    eval_period: int = 200
     patch_eval_period: int = 500
     visuals_eval_period: int = 50
-    ckpt_period: int = 500
+    ckpt_period: int = 200
     resume: bool = False
     save_ckpt_locally: bool = field(default=False)
 
@@ -129,8 +129,8 @@ class SAEConf:
 
     threshold_top_latents: float = 0.5
     threshold_update_rate: float = 0.01
-    threshold_latents_dead: int = 1_00_000
-    min_threshold_latents_dead: int = 10_000
+    threshold_latents_dead: int = 2_000_000
+    min_threshold_latents_dead: int = 1_00_000
     threshold_latents_dense: float = 0.5
 
     config_path: Optional[str] = None
