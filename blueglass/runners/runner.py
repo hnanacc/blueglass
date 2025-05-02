@@ -313,33 +313,32 @@ class Runner:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
         # All processes must reach here before proceeding
         comm.synchronize()
-        if not comm.is_main_process():
-            return
+        if comm.is_main_process():
+            self._checkpoint()
+            if self.conf.experiment.use_wandb:
+                checkpoint_name = f"model_{self.step}"
+                basename = "{}.pth".format(checkpoint_name)
+                save_file = os.path.join(self.checkpointer.save_dir, basename)
 
-        self._checkpoint()
-        if self.conf.experiment.use_wandb:
-            checkpoint_name = f"model_{self.step}"
-            basename = "{}.pth".format(checkpoint_name)
-            save_file = os.path.join(self.checkpointer.save_dir, basename)
-
-            artifact = wandb.Artifact(
-                name=f"{self.runner_model_name}-step-{self.step}",  # Unique name per checkpoint
-                type=self.runner_name,
-                description=f"Model checkpoint at step {self.step}",
-                metadata={"step": self.step, "framework": "PyTorch"},
-            )
-            # Add the checkpoint file
-            artifact.add_file(str(save_file))
-            wandb.log_artifact(artifact)
-        save_locally = self.conf.runner.save_ckpt_locally
-        if save_locally:
-            logger.info(
-                "Checkpointing to storage locally is set to True, hence saving it locally."
-            )
-        else:
-            os.remove(
-                os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
-            )
-            logger.info(
-                "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
-            )
+                artifact = wandb.Artifact(
+                    name=f"{self.runner_model_name}-step-{self.step}",  # Unique name per checkpoint
+                    type=self.runner_name,
+                    description=f"Model checkpoint at step {self.step}",
+                    metadata={"step": self.step, "framework": "PyTorch"},
+                )
+                # Add the checkpoint file
+                artifact.add_file(str(save_file))
+                wandb.log_artifact(artifact)
+            save_locally = self.conf.runner.save_ckpt_locally
+            if save_locally:
+                logger.info(
+                    "Checkpointing to storage locally is set to True, hence saving it locally."
+                )
+            else:
+                os.remove(
+                    os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
+                )
+                logger.info(
+                    "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
+                )
+        comm.synchronize()
