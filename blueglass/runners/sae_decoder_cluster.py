@@ -274,14 +274,16 @@ class DecoderClusterRunner(SAERunner):
         for self.step in range(1, self.max_steps + 1):
             records_dict = self.run_step()
 
-            if self.step % self.logs_period == 0:
-                self.register_metrics(records_dict)
+            self.register_metrics(records_dict)
 
             del records_dict
             torch.cuda.empty_cache()
             gc.collect()
 
     def register_metrics(self, records_dict: Dict[str, Any]):
+        if self.step % self.logs_period != 0:
+            return None
+        
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()

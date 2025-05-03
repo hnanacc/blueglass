@@ -163,11 +163,14 @@ class Runner:
         return losses_dict, metric_dict, extras_dict
 
     def register_metrics(self, records_dict: Dict[str, Any]):
+        if self.step % self.logs_period != 0:
+            return None
+        
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
         }
-
+        
         gathered_records_dict = comm.gather(records_dict)
 
         if not comm.is_main_process():
@@ -194,7 +197,7 @@ class Runner:
         if "metric_fitness" in metric_dict and self.best_tracker.is_best(
             metric_dict["metric_fitness"], self.step
         ):
-            self.checkpoint()
+            self.checkpoint(force_save=True)
         else:
             metric_dict["metric_fitness"] = self.best_tracker.best()
 
@@ -278,12 +281,10 @@ class Runner:
 
             records_dict["metrics"] = self.test()
             self.model = self.model.train()
+            
+            self.register_metrics(records_dict)
 
-            if self.step % self.logs_period == 0:
-                self.register_metrics(records_dict)
-
-            if self.step % self.ckpt_period == 0:
-                self.checkpoint()
+            self.checkpoint()
 
             del records_dict
             torch.cuda.empty_cache()
@@ -309,10 +310,13 @@ class Runner:
             if self.step % self.logs_period == 0:
                 logger.info(f"Processed {self.step} / {len(self.dataloader)}")
 
-    def checkpoint(self) -> None:
+    def checkpoint(self, force_save=False) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
         # All processes must reach here before proceeding
         comm.synchronize()
+        if not (force_save or self.step % self.ckpt_period == 0):
+            return None
+        
         if comm.is_main_process():
             self._checkpoint()
             if self.conf.experiment.use_wandb:
@@ -341,4 +345,4 @@ class Runner:
                 logger.info(
                     "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
                 )
-        comm.synchronize()
+        torch.distributed.barrier()
