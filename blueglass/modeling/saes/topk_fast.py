@@ -158,7 +158,7 @@ class TopKFast(AutoEncoder):
         interims_topk = interims.clone()
         interims_topk.zero_()
         interims_topk.scatter_(-1, top_indices, topk_values)
-        
+
         return interims_topk, ctx
 
     def _loss_topk_aux(
