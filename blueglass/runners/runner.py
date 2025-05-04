@@ -163,11 +163,14 @@ class Runner:
         return losses_dict, metric_dict, extras_dict
 
     def register_metrics(self, records_dict: Dict[str, Any]):
+        if self.step % self.logs_period != 0:
+            return None
+        
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
         }
-
+        
         gathered_records_dict = comm.gather(records_dict)
 
         if not comm.is_main_process():
@@ -194,7 +197,7 @@ class Runner:
         if "metric_fitness" in metric_dict and self.best_tracker.is_best(
             metric_dict["metric_fitness"], self.step
         ):
-            self.checkpoint()
+            self.checkpoint(force_save=True)
         else:
             metric_dict["metric_fitness"] = self.best_tracker.best()
 
@@ -280,12 +283,10 @@ class Runner:
 
             records_dict["metrics"] = self.test()
             self.model = self.model.train()
+            
+            self.register_metrics(records_dict)
 
-            if self.step % self.logs_period == 0:
-                self.register_metrics(records_dict)
-
-            if self.step % self.ckpt_period == 0:
-                self.checkpoint()
+            self.checkpoint()
 
             del records_dict
             torch.cuda.empty_cache()
@@ -311,37 +312,39 @@ class Runner:
             if self.step % self.logs_period == 0:
                 logger.info(f"Processed {self.step} / {len(self.dataloader)}")
 
-    def checkpoint(self) -> None:
+    def checkpoint(self, force_save=False) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
         # All processes must reach here before proceeding
         comm.synchronize()
-        if not comm.is_main_process():
-            return
+        if not (force_save or self.step % self.ckpt_period == 0):
+            return None
+        
+        if comm.is_main_process():
+            self._checkpoint()
+            if self.conf.experiment.use_wandb:
+                checkpoint_name = f"model_{self.step}"
+                basename = "{}.pth".format(checkpoint_name)
+                save_file = os.path.join(self.checkpointer.save_dir, basename)
 
-        self._checkpoint()
-        if self.conf.experiment.use_wandb:
-            checkpoint_name = f"model_{self.step}"
-            basename = "{}.pth".format(checkpoint_name)
-            save_file = os.path.join(self.checkpointer.save_dir, basename)
-
-            artifact = wandb.Artifact(
-                name=f"{self.runner_model_name}-step-{self.step}",  # Unique name per checkpoint
-                type=self.runner_name,
-                description=f"Model checkpoint at step {self.step}",
-                metadata={"step": self.step, "framework": "PyTorch"},
-            )
-            # Add the checkpoint file
-            artifact.add_file(str(save_file))
-            wandb.log_artifact(artifact)
-        save_locally = self.conf.runner.save_ckpt_locally
-        if save_locally:
-            logger.info(
-                "Checkpointing to storage locally is set to True, hence saving it locally."
-            )
-        else:
-            os.remove(
-                os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
-            )
-            logger.info(
-                "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
-            )
+                artifact = wandb.Artifact(
+                    name=f"{self.runner_model_name}-step-{self.step}",  # Unique name per checkpoint
+                    type=self.runner_name,
+                    description=f"Model checkpoint at step {self.step}",
+                    metadata={"step": self.step, "framework": "PyTorch"},
+                )
+                # Add the checkpoint file
+                artifact.add_file(str(save_file))
+                wandb.log_artifact(artifact)
+            save_locally = self.conf.runner.save_ckpt_locally
+            if save_locally:
+                logger.info(
+                    "Checkpointing to storage locally is set to True, hence saving it locally."
+                )
+            else:
+                os.remove(
+                    os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
+                )
+                logger.info(
+                    "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
+                )
+        torch.distributed.barrier()
