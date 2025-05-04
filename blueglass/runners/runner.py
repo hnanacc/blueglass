@@ -55,7 +55,7 @@ class Runner:
 
         unique_id = uuid.uuid4().hex[:8]  # Short UUID (8 characters)
         self.conf.experiment.output_dir = f"{conf.experiment.output_dir}/{unique_id}"
-        
+
         assert (
             self.eval_period >= self.logs_period
         ), "invalid eval period and logs period, logs must be smaller than eval."
@@ -204,7 +204,9 @@ class Runner:
         }
         if self.conf.experiment.use_wandb:
             if len(visual_metric_dict) > 0:
-                visual_metric_dict = {k: wandb.Image(v) for k, v in visual_metric_dict.items()}
+                visual_metric_dict = {
+                    k: wandb.Image(v) for k, v in visual_metric_dict.items()
+                }
             wandb.log(
                 {
                     **losses_dict,

@@ -216,7 +216,9 @@ class DecoderClusterRunner(SAERunner):
         )
         filters = ["decoder_mlp"]
         patterns = config.feature.patterns
-        config.feature.patterns = [p for p in patterns if any(f in p.value for f in filters)]
+        config.feature.patterns = [
+            p for p in patterns if any(f in p.value for f in filters)
+        ]
 
         m = self.build_saes_model(config)
         ckpt = torch.load(
@@ -400,9 +402,9 @@ class DecoderClusterRunner(SAERunner):
             A matplotlib figure suitable for logging with wandb.Image().
         """
         decoder_weights = sae.decoder.detach().cpu().numpy()  # [N, D]
-        reducer = umap.UMAP(n_components=2, random_state=random_state)
+        reducer = umap.UMAP(n_components=2, random_state=random_state, n_jobs=1)
         umap_proj = reducer.fit_transform(decoder_weights)
-
+        del reducer
         # Clustering
         if clustering == "kmeans":
             clusterer = KMeans(n_clusters=n_clusters, random_state=random_state)
