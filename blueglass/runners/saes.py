@@ -71,7 +71,7 @@ class SAERunner(Runner):
             self._prepare_model_for_store(conf),
             "train",
             self.prepare_filter_scheme(),
-            num_workers=self.conf.num_data_workers
+            num_workers=self.conf.num_data_workers,
         )
 
     def build_model(self, conf) -> nn.Module:
@@ -100,7 +100,7 @@ class SAERunner(Runner):
         return (
             conf.runner.lr
             if conf.runner.lr is not None
-            else 4e-4 / ((module.latents_dim / 2**14) ** 0.5)
+            else 1e-4 / ((module.latents_dim / 2**14) ** 0.5)
         )
 
     def build_optimizer(
@@ -248,7 +248,7 @@ class SAERunner(Runner):
             metrics_dict = metrics_dict | metric_fitness_dict
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
-    
+
     def test(self) -> Dict[str, Any]:
         """
         running vanilla evaluation only once for the entire run
@@ -258,7 +258,11 @@ class SAERunner(Runner):
             # Step 1. Measure SAE metrics on test data.
             fm = self._prepare_model_for_store(self.conf)
             fd = build_feature_dataloader(
-                self.conf, self.conf.dataset.test, fm, "test", self.prepare_filter_scheme()
+                self.conf,
+                self.conf.dataset.test,
+                fm,
+                "test",
+                self.prepare_filter_scheme(),
             )
             fe = SAEEvaluator(self.conf, self.step)
             logger.info("Evaluation for SAE metrics.")
@@ -271,7 +275,9 @@ class SAERunner(Runner):
                 )
                 ev = self.build_evaluator(self.conf)
                 logger.info("Evaluation for detection in VLM (vanilla).")
-                vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
+                vanilla_records_patcher = inference_on_dataset(
+                    self.feature_model, ds, ev
+                )
 
                 self.vanilla_fm_metrics = vanilla_records_patcher
             else:
@@ -289,12 +295,12 @@ class SAERunner(Runner):
             # Step 2a. Measure metrics with patcher on test data and feature model.
             test_patcher = self.patcher_test()
             records_patcher = records_patcher | test_patcher
-            
+
         if self.step % self.visuals_eval_period == 0:
             records_visuals = self.visualise_metrics()
 
         return {**records_feature, **records_patcher, **records_visuals}
-    
+
     def patcher_test(self) -> Dict[str, Any]:
 
         records_patcher = {}
@@ -320,13 +326,13 @@ class SAERunner(Runner):
 
     def plot_reduced_decoders(self, sae, direc="row") -> plt.Figure:
         decoder_weights = sae.decoder.detach().cpu().numpy()  # [N, D]
-        if direc=="column":
+        if direc == "column":
             decoder_weights = decoder_weights.T
         reducer = umap.UMAP(n_components=2, random_state=42)
         umap_proj = reducer.fit_transform(decoder_weights)
         fig = plt.figure(figsize=(10, 8))
         fig, ax = plt.subplots(figsize=(10, 8))  # ✅ Create explicit Axes
-        
+
         if umap_proj.shape[0] == 0 or np.isnan(umap_proj).any():
             logger.warning(" Warning: UMAP projection is empty or NaN. Skipping plot.")
             return fig
@@ -358,9 +364,9 @@ class SAERunner(Runner):
                 records[f"{name}/{direc}"] = fig
 
         return records
-    
+
     def visualise_metrics(self) -> Dict[str, Any]:
-        records_visuals  = {}
+        records_visuals = {}
         if self.step % self.conf.runner.visuals_eval_period == 0:
             visuals = {}
             _visuals = self.visualize_decoder_weights(direc="row")
@@ -368,14 +374,12 @@ class SAERunner(Runner):
 
             _visuals = self.visualize_decoder_weights(direc="column")
             visuals = {**visuals, **_visuals}
-            
+
             visuals = {f"decoder_weights/{k}": v for k, v in visuals.items()}
             # TODO Fix visual plots
             if visuals is not None:
                 for metric in visuals.keys():
-                    records_visuals[f"visual_metrics/{metric}"] = (
-                        visuals[metric]
-                    )
+                    records_visuals[f"visual_metrics/{metric}"] = visuals[metric]
 
             logger.info("Visual metrics have been updated.")
 

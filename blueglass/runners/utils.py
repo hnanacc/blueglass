@@ -3,6 +3,8 @@
 
 from torch import nn
 from typing import Iterable, List, Dict, Any, Tuple, Union
+
+
 class BestTracker:
     def __init__(self):
         self.best_fitness = None
@@ -26,7 +28,7 @@ class BestTracker:
 
 def maybe_strip_ddp(
     model: Union[nn.Module, nn.parallel.DistributedDataParallel],
-    ) -> Union[nn.Module, nn.parallel.DistributedDataParallel]:
+) -> Union[nn.Module, nn.parallel.DistributedDataParallel]:
     if isinstance(model, nn.parallel.DistributedDataParallel):
         return model.module
     return model

@@ -27,6 +27,7 @@ def LIST_REPO_FILES():
     remote_names = list_repo_files(REMOTE, repo_type="dataset")
     return remote_names
 
+
 def _download_features_from_hf(
     model: str,
     dataset: str,
@@ -134,6 +135,7 @@ def prepare_feature_disk_path(conf, name: str, dataset: Datasets, model: Model):
         local_dir=conf.feature.path,
     )
     return ondisk_path
+
 
 def fetch_remote_feature_names(
     conf: BLUEGLASSConf, dataset: Datasets, model: Model

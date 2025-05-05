@@ -108,7 +108,7 @@ class SAEEvaluator(DatasetEvaluator):
         #     plt.close("all")
         #     raise RuntimeError(f"Visualization failed: {str(e)}")
         return {}
-    
+
     def evaluate(self) -> Dict[str, Any]:
         comm.synchronize()
         gathered = comm.gather(self._processed)
@@ -133,7 +133,7 @@ class SAEEvaluator(DatasetEvaluator):
 
         visuals = {}
         if self.step % self.conf.runner.visuals_eval_period == 0:
-                
+
             _visuals = self.visualize_latents_distribution(
                 latents_fire_count, latents_dead_since
             )

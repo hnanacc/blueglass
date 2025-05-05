@@ -315,7 +315,6 @@ class Runner:
     def checkpoint(self, force_save=False) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
         # All processes must reach here before proceeding
-        comm.synchronize()
         if not (force_save or self.step % self.ckpt_period == 0):
             return None
         
@@ -347,4 +346,3 @@ class Runner:
                 logger.info(
                     "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
                 )
-        torch.distributed.barrier()
