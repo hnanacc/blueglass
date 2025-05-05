@@ -31,8 +31,16 @@ from .types import DistFormat
 
 logger = setup_blueglass_logger(__name__)
 
+
 class PyArrowReader:
-    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model, batch_size: int=1):
+    def __init__(
+        self,
+        conf: BLUEGLASSConf,
+        name: str,
+        dataset: Datasets,
+        model: Model,
+        batch_size: int = 1,
+    ):
         # TODO: fix this.
         self.batch_size = batch_size
         self.path = prepare_feature_disk_path(conf, name, dataset, model)
@@ -235,7 +243,9 @@ class FeatureStorage:
         discover_feature_names = self._discover_feature_names()
         for name in discover_feature_names:
             if name not in self.reader_per_name:
-                _reader_per_name = PyArrowReader(self.conf, name, self.dataset, self.model, self.batch_size)
+                _reader_per_name = PyArrowReader(
+                    self.conf, name, self.dataset, self.model, self.batch_size
+                )
                 check_rows = _reader_per_name.stream.count_rows(batch_size=1)
                 if check_rows == 0:
                     logger.warning(

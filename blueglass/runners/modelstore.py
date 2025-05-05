@@ -111,21 +111,12 @@ class ModelstoreRunner(Runner):
 
     def run_step(self, batched_inputs: Dict[str, Any]) -> Dict[str, Any]:
 
-        if self.step <= self.warmup_steps:
-            _return = self.model(batched_inputs)
-            self.scheduler.step()
-            current_lr = self.optimizer.param_groups[0]["lr"]
-            logger.info(
-                f"[Warmup Step {self.step}/{self.warmup_steps}, LR: {current_lr:.4f}"
-            )
-            return _return
-
         with autocast("cuda", dtype=self.precision):
             records = self.model(batched_inputs)
 
         self.optimizer.zero_grad()
 
-        loss = records.pop("loss/loss")
+        loss = records["loss/loss_combined"]
 
         assert isinstance(loss, Tensor), "received non-tensor loss."
 

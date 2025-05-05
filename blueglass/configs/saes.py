@@ -32,6 +32,7 @@ from blueglass.configs import (
 )
 from typing import Optional, List
 
+
 @dataclass
 class SAEVariantConf(SAEConf):
     variant: SAEVariant = SAEVariant.TOPK_FAST

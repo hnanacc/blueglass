@@ -52,7 +52,12 @@ class FeatureStream:
 
 class StorageStream(FeatureStream):
     def __init__(
-        self, conf: BLUEGLASSConf, dataset: Datasets, model: Model, filter_scheme: str, batch_size: int
+        self,
+        conf: BLUEGLASSConf,
+        dataset: Datasets,
+        model: Model,
+        filter_scheme: str,
+        batch_size: int,
     ):
         super().__init__(conf, model, dataset, filter_scheme)
         self.source = FeatureStorage(conf, dataset, model, filter_scheme, batch_size)
@@ -79,7 +84,14 @@ class StorageStream(FeatureStream):
 
 
 class InterceptorStream(FeatureStream):
-    def __init__(self, conf, dataset: Datasets, model: nn.Module, filter_scheme: str, batch_size: int):
+    def __init__(
+        self,
+        conf,
+        dataset: Datasets,
+        model: nn.Module,
+        filter_scheme: str,
+        batch_size: int,
+    ):
         super().__init__(conf, model, dataset, filter_scheme)
         assert isinstance(
             model, nn.Module
@@ -296,6 +308,14 @@ def build_feature_dataloader(
         )
 
     if local_mode == "train":
-        return DataLoader(ds, shuffle=True, batch_size=None, num_workers=1, persistent_workers=False, pin_memory=False, prefetch_factor=1)
+        return DataLoader(
+            ds,
+            shuffle=True,
+            batch_size=None,
+            num_workers=1,
+            persistent_workers=False,
+            pin_memory=False,
+            prefetch_factor=1,
+        )
     else:
         return DataLoader(ds, shuffle=False, batch_size=None)

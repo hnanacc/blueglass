@@ -252,7 +252,7 @@ class AutoEncoder(nn.Module):
 
         normed = self.decoder.weight / self.decoder.weight.norm(dim=0, keepdim=True)
         self.decoder.weight.data = normed
-        
+
         if not grads:
             return
 
@@ -295,4 +295,4 @@ class AutoEncoder(nn.Module):
     @property
     def sparse_codes(self) -> Tensor:
         decoder = self.decoder
-        return decoder.weight.T.detach() # [N, D]
+        return decoder.weight.T.detach()  # [N, D]
