@@ -249,7 +249,7 @@ class DatasetAttribution(Interpreter):
             len(frame) <= self.nr_samples_per_latent
         ), "Frame has more samples than expected."
 
-        n_rows = self.num_samples_per_row 
+        n_rows = self.num_samples_per_row
         n_cols = math.ceil(len(frame) / self.num_samples_per_row)
 
         assert n_rows * n_cols >= len(frame), "Frame has more rows than grid space."
@@ -262,8 +262,8 @@ class DatasetAttribution(Interpreter):
             ax.axis("off")
             ax.imshow(self.plot_im_with_bbox(row))
             ax.set_title(
-                f"img: {row['image_id']}" 
-                f"tok: {row['token_id']}" 
+                f"img: {row['image_id']}"
+                f"tok: {row['token_id']}"
                 f"cls: {self.class_names[row['pred_cls']].lower()}",
                 fontsize=8,
             )
@@ -301,5 +301,3 @@ class DatasetAttribution(Interpreter):
             desc="Prepare Token Grid Per Latent",
             total=self.latents_dim,
         )
-
-        

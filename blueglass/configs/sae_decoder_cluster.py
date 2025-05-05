@@ -18,9 +18,10 @@ class DecoderClusterVariantConf(SAEConf):
         "/home/squtub/github_repos/blueglass/trained_saes/model_2000.json"
     )
     checkpoint_path: str = (
-        "/home/squtub/github_repos/blueglass/trained_saes/model_2000.pth"  # 
+        "/home/squtub/github_repos/blueglass/trained_saes/model_2000.pth"  #
     )
     # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
+
 
 @dataclass
 class DecoderClusterRunnerConf(RunnerConf):

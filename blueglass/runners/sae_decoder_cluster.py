@@ -285,7 +285,7 @@ class DecoderClusterRunner(SAERunner):
     def register_metrics(self, records_dict: Dict[str, Any]):
         if self.step % self.logs_period != 0:
             return None
-        
+
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()

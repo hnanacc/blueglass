@@ -13,8 +13,10 @@ OLD_ROOT_DIR = "BlueLens/features_datasets"
 NEW_ROOT_DIR = "BlueLensPos/features_datasets"
 NEW_1_ROOT_DIR = "BlueLensPos_1/features_datasets"
 
+
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
+
 
 def build_arrow_schema(conf, features_dim: int):
     return pa.schema(
@@ -34,6 +36,7 @@ def build_arrow_schema(conf, features_dim: int):
         ]
     )
 
+
 def find_all_parquet_parts(root_dir):
     part_files = []
     for dirpath, _, filenames in os.walk(root_dir):
@@ -41,8 +44,6 @@ def find_all_parquet_parts(root_dir):
             if filename.startswith("part.") and filename.split(".")[-1].isdigit():
                 part_files.append(os.path.join(dirpath, filename))
     return part_files
-
-
 
 
 def _process_single_file(args):
@@ -63,7 +64,9 @@ def _process_single_file(args):
         new_part_file = part_file.replace("BlueLens", NEW_ROOT_DIR)
         os.makedirs(os.path.dirname(new_part_file), exist_ok=True)
 
-        writer = pq.ParquetWriter(new_part_file, schema, compression="zstd", compression_level=7)
+        writer = pq.ParquetWriter(
+            new_part_file, schema, compression="zstd", compression_level=7
+        )
         try:
             writer.write(table)
         finally:
@@ -78,7 +81,7 @@ def _process_single_file(args):
 def filter_and_rewrite_BlueLens(conf, num_workers=8, root_dir=NEW_ROOT_DIR):
     """
     Filters Parquet part files by conf_msk == True and rewrites them to a new location.
-    
+
     Parameters:
         root_dir (str): Path to the root folder containing Parquet `part.*` files.
         conf (BLUEGLASSConf): Configuration object used to define feature dimensions.
@@ -95,7 +98,9 @@ def filter_and_rewrite_BlueLens(conf, num_workers=8, root_dir=NEW_ROOT_DIR):
             executor.submit(_process_single_file, (file, conf)): file
             for file in part_files
         }
-        for future in tqdm(as_completed(futures), total=total, desc="Processing files", unit="file"):
+        for future in tqdm(
+            as_completed(futures), total=total, desc="Processing files", unit="file"
+        ):
             part_file, is_success, error = future.result()
             if is_success:
                 success += 1
@@ -105,13 +110,17 @@ def filter_and_rewrite_BlueLens(conf, num_workers=8, root_dir=NEW_ROOT_DIR):
 
     log(f"✅ Finished. Total: {total}, Success: {success}, Failed: {failed}")
 
+
 def find_folders_with_parts(root_dir):
     folders = []
     for dirpath, _, filenames in os.walk(root_dir):
-        part_files = [f for f in filenames if f.startswith("part.") and f.split(".")[-1].isdigit()]
+        part_files = [
+            f for f in filenames if f.startswith("part.") and f.split(".")[-1].isdigit()
+        ]
         if part_files:
             folders.append(dirpath)
     return folders
+
 
 def build_arrow_schema(conf, features_dim: int):
     return pa.schema(
@@ -131,10 +140,15 @@ def build_arrow_schema(conf, features_dim: int):
         ]
     )
 
+
 def process_single_folder(args):
     folder, conf = args
     part_files = sorted(
-        [os.path.join(folder, f) for f in os.listdir(folder) if f.startswith("part.") and f.split(".")[-1].isdigit()]
+        [
+            os.path.join(folder, f)
+            for f in os.listdir(folder)
+            if f.startswith("part.") and f.split(".")[-1].isdigit()
+        ]
     )
 
     if not part_files:
@@ -163,11 +177,15 @@ def process_single_folder(args):
                 current_batch = buffer.iloc[:MAX_ROWS_PER_FILE]
                 buffer = buffer.iloc[MAX_ROWS_PER_FILE:]
 
-                schema = build_arrow_schema(conf, len(current_batch["features"].iloc[0]))
+                schema = build_arrow_schema(
+                    conf, len(current_batch["features"].iloc[0])
+                )
                 new_part_file = os.path.join(new_folder, f"part.{new_part_counter}")
                 table = pa.Table.from_pandas(current_batch, schema=schema)
 
-                pq.write_table(table, new_part_file, compression="zstd", compression_level=7)
+                pq.write_table(
+                    table, new_part_file, compression="zstd", compression_level=7
+                )
                 log(f"✅ Wrote {MAX_ROWS_PER_FILE} rows to {new_part_file}")
                 new_part_counter += 1
 
@@ -183,6 +201,7 @@ def process_single_folder(args):
         pq.write_table(table, new_part_file, compression="zstd", compression_level=7)
         log(f"✅ Final write {len(buffer)} rows to {new_part_file}")
 
+
 def consolidate(conf, root_dir=NEW_ROOT_DIR, num_workers=8):
     folders = find_folders_with_parts(root_dir)
     log(f"Found {len(folders)} folders with part files.")
@@ -192,15 +211,16 @@ def consolidate(conf, root_dir=NEW_ROOT_DIR, num_workers=8):
             executor.submit(process_single_folder, (folder, conf)): folder
             for folder in folders
         }
-        for _ in tqdm(as_completed(futures), total=len(futures), desc="Processing folders"):
+        for _ in tqdm(
+            as_completed(futures), total=len(futures), desc="Processing folders"
+        ):
             pass
+
 
 if __name__ == "__main__":
     from blueglass.configs import BLUEGLASSConf
+
     conf = BLUEGLASSConf()
     num_workers = 75
-    filter_and_rewrite_BlueLens(
-        conf=conf,
-        num_workers=num_workers
-    )
+    filter_and_rewrite_BlueLens(conf=conf, num_workers=num_workers)
     consolidate(conf, num_workers=num_workers)  # or 32 if you have CPUs

@@ -27,13 +27,15 @@ def is_list_of_dict(items: Any) -> TypeGuard[List[Dict[str, Any]]]:
 class FeatureExtractRunner(Runner):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__(conf)
-        self.model = FeatureInterceptor(
-            conf, self.build_model(conf), self.build_recorders(conf)
-        )
         self.store = FeatureStorage(conf, conf.dataset.infer, conf.model.name)
 
     def build_recorders(self, conf: BLUEGLASSConf) -> Dict[str, Recorder]:
         return {name: StandardRecorder(name) for name in conf.feature.patterns}
+
+    def build_model(self, conf: BLUEGLASSConf):
+        vlm_model = super().build_model(conf)
+        recorders = self.build_recorders(conf)
+        return FeatureInterceptor(conf, vlm_model, recorders)
 
     def run_step(self, batched_inputs: List[Dict[str, Any]]) -> Dict[str, Any]:
         with torch.inference_mode():

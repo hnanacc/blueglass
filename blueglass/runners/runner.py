@@ -254,26 +254,7 @@ class Runner:
             pass
         return d, m, o, s, c
 
-    def initialize_test_attrs(self) -> Tuple[DataLoader, nn.Module, DatasetEvaluator]:
-        d = self.build_test_dataloader(self.conf)
-        e = self.build_evaluator(self.conf)
-        m = (
-            self.model.eval()
-            if self.conf.runner.mode == "train"
-            else self.build_model(self.conf)
-        )
-        return d, m, e
-
-<<<<<<< HEAD
-    def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
-        d = self.build_infer_dataloader(self.conf)
-        m = self.build_model(self.conf)
-        return d, m
-
-    def train(self):
-=======
     def train(self) -> None:
->>>>>>> cb0b420872c89721538a6b4c66b7573630490d15
         (
             self.dataloader,
             self.model,
@@ -301,6 +282,16 @@ class Runner:
             torch.cuda.empty_cache()
             gc.collect()
 
+    def initialize_test_attrs(self) -> Tuple[DataLoader, nn.Module, DatasetEvaluator]:
+        d = self.build_test_dataloader(self.conf)
+        e = self.build_evaluator(self.conf)
+        m = (
+            self.model.eval()
+            if self.conf.runner.mode == "train"
+            else self.build_model(self.conf)
+        )
+        return d, m, e
+
     def test(self) -> Dict[str, Any]:
         records_test_dict = {}
         if self.step % self.eval_period == 0 or self.conf.runner.mode == "test":
@@ -308,14 +299,13 @@ class Runner:
             records_test_dict = inference_on_dataset(model, dataloader, evaluator)
         return records_test_dict
 
-<<<<<<< HEAD
+    def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
+        d = self.build_infer_dataloader(self.conf)
+        m = self.build_model(self.conf)
+        return d, m
+
     def infer(self):
         self.dataloader, self.model = self.initialize_infer_attrs()
-=======
-    def infer(self) -> None:
-        self.dataloader = self.build_infer_dataloader(self.conf)
-        self.model.eval()
->>>>>>> cb0b420872c89721538a6b4c66b7573630490d15
         for self.step, data in enumerate(self.dataloader):
             records_dict = self.run_step(data)
 
@@ -328,38 +318,7 @@ class Runner:
 
     def checkpoint(self, force_save=False) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
-<<<<<<< HEAD
-        if not comm.is_main_process():
-            return
 
-        self._checkpoint()
-        if self.conf.experiment.use_wandb:
-            checkpoint_name = f"model_{self.step}"
-            basename = "{}.pth".format(checkpoint_name)
-            save_file = os.path.join(self.checkpointer.save_dir, basename)
-
-            artifact = wandb.Artifact(
-                name=f"{self.runner_model_name}-step-{self.step}",  # Unique name per checkpoint
-                type=self.runner_name,
-                description=f"Model checkpoint at step {self.step}",
-                metadata={"step": self.step, "framework": "PyTorch"},
-            )
-            # Add the checkpoint file
-            artifact.add_file(str(save_file))
-            wandb.log_artifact(artifact)
-        save_locally = self.conf.runner.save_ckpt_locally
-        if save_locally:
-            logger.info(
-                "Checkpointing to storage locally is set to True, hence saving it locally."
-            )
-        else:
-            os.remove(
-                os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
-            )
-            logger.info(
-                "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
-            )
-=======
         # All processes must reach here before proceeding
         if not (force_save or self.step % self.ckpt_period == 0):
             return None
@@ -392,4 +351,3 @@ class Runner:
                 logger.info(
                     "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
                 )
->>>>>>> cb0b420872c89721538a6b4c66b7573630490d15
