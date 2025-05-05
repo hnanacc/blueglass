@@ -27,6 +27,9 @@ def LIST_REPO_FILES():
     remote_names = list_repo_files(REMOTE, repo_type="dataset")
     return remote_names
 
+@lru_cache(maxsize=100)
+def LIST_ONDISK_FILES(search_path: str) -> List[str]:
+    return os.listdir(search_path)
 
 def _download_features_from_hf(
     model: str,
@@ -157,4 +160,4 @@ def fetch_ondisk_feature_names(conf: BLUEGLASSConf, dataset: Datasets, model: Mo
         logger.info("No features discovered on disk.")
         return []
 
-    return os.listdir(search_path)
+    return LIST_ONDISK_FILES(search_path)

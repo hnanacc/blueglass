@@ -292,4 +292,4 @@ class AutoEncoder(nn.Module):
     @property
     def sparse_codes(self) -> Tensor:
         decoder = self.decoder
-        return decoder.weight.detach() # [N, D]
+        return decoder.weight.T.detach() # [N, D]
