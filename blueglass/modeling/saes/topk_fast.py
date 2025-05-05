@@ -123,7 +123,7 @@ class TopKFast(AutoEncoder):
             return y + self.feature_bias
         else:
             return y
-
+    
     def encode(
         self, true_features: Tensor, ctx: Dict[str, Any]
     ) -> Tuple[Tensor, Dict[str, Any]]:
@@ -261,3 +261,8 @@ class TopKFast(AutoEncoder):
             self.decoder.data,
             "d_sae, d_sae feature_dim -> d_sae feature_dim",
         )
+
+    @property
+    def sparse_codes(self) -> Tensor:
+        decoder = self.decoder
+        return decoder.data # [N, D]

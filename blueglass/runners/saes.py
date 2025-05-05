@@ -325,7 +325,7 @@ class SAERunner(Runner):
         return records_patcher
 
     def plot_reduced_decoders(self, sae, direc="row") -> plt.Figure:
-        decoder_weights = sae.decoder.detach().cpu().numpy()  # [N, D]
+        decoder_weights = sae.sparse_codes().cpu().numpy()
         if direc == "column":
             decoder_weights = decoder_weights.T
         reducer = umap.UMAP(n_components=2, random_state=42)

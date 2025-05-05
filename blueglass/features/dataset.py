@@ -296,6 +296,6 @@ def build_feature_dataloader(
         )
 
     if local_mode == "train":
-        return DataLoader(ds, shuffle=True, batch_size=None, num_workers=num_workers, persistent_workers=True, pin_memory=False, prefetch_factor=2)
+        return DataLoader(ds, shuffle=True, batch_size=None, num_workers=1, persistent_workers=False, pin_memory=False, prefetch_factor=1)
     else:
         return DataLoader(ds, shuffle=False, batch_size=None)

@@ -288,3 +288,8 @@ class AutoEncoder(nn.Module):
             "proc_interims": interims,
             "top_latents": ctx["top_latents"],
         }
+
+    @property
+    def sparse_codes(self) -> Tensor:
+        decoder = self.decoder
+        return decoder.weight.detach() # [N, D]
