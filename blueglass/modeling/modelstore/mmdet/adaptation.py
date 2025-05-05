@@ -110,6 +110,7 @@ class MMDetModel(nn.Module):
         if self.training:
             _return = dict(self.model.parse_losses(mm_pos)[1])
             _return = {f"loss/{k}": v for k, v in _return.items()}
+            # TODO: return loss_combined from losses for the runner.
         else:
             _return = self.postprocess(batched_inputs, mm_pos)
 

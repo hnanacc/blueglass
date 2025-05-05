@@ -48,7 +48,7 @@ class VLMLinearProbeRunner(Runner):
     def process_records(
         self, gathered_records: List[Dict[str, Dict[str, Dict[str, Any]]]]
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
-        losses_dict, metric_dict, extras_dict = {}, {}, {}
+        losses_dict, metric_dict, extras_dict, visual_metrics_dict= {}, {}, {}, {}
 
         for rank, records_per_rank in enumerate(gathered_records):
             for branch, records_per_branch in records_per_rank.items():
@@ -89,7 +89,7 @@ class VLMLinearProbeRunner(Runner):
         if len(metric_dict) > 0:
             metric_dict["metric_fitness"] = sum(metric_dict.values())
 
-        return losses_dict, metric_dict, extras_dict
+        return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 
     def run_step(self, batched_inputs: Dict[str, Any]) -> Dict[str, Any]:
         assert self.model.training, "model not in train mode for train."
