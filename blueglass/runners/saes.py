@@ -90,6 +90,7 @@ class SAERunner(Runner):
             if isinstance(model, nn.parallel.DistributedDataParallel)
             else model
         )
+        assert isinstance(module.latents_dim, int), "Expected latents_dim to be int."
         return (
             conf.runner.lr
             if conf.runner.lr is not None

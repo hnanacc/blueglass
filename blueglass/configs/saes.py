@@ -4,9 +4,32 @@
 import os.path as osp
 from dataclasses import dataclass, field
 from hydra.core.config_store import ConfigStore
+from blueglass.configs.constants import (
+    FEATURE_DIR,
+    DATASETS_AND_EVALS,
+    MODELSTORE_MMDET_CONFIGS_DIR,
+    MODELSTORE_CONFIGS_DIR,
+    WEIGHTS_DIR,
+)
 
-from blueglass.configs import *
-
+from blueglass.configs import (
+    SAEConf,
+    RunnerConf,
+    ExperimentConf,
+    DatasetConf,
+    ModelConf,
+    FeatureConf,
+    EvaluatorConf,
+    SAEVariant,
+    Model,
+    Runner,
+    Precision,
+    RunnerMode,
+    InterceptMode,
+    FeaturePattern,
+    BLUEGLASSConf,
+    LabelMatchEvaluatorConf,
+)
 from typing import List, Optional
 
 
@@ -35,19 +58,19 @@ class SAEDatasetConf(DatasetConf):
 @dataclass
 class SAEFeatureConf(FeatureConf):
     path: Optional[str] = FEATURE_DIR
-    layer_ids: List = field(default_factory=lambda: [0, 1, 2, 3, 4, 5])
+    layer_ids: List = field(default_factory=lambda: [4, 5])
     intercept_mode: InterceptMode = InterceptMode.MANUAL
     patterns: List[FeaturePattern] = field(
         default_factory=lambda: [
             # FeaturePattern.DET_DECODER_MHA,
-            FeaturePattern.DET_DECODER_MLP,
-            FeaturePattern.DET_DECODER_RESID_MHA,
+            # FeaturePattern.DET_DECODER_MLP,
+            # FeaturePattern.DET_DECODER_RESID_MHA,
             FeaturePattern.DET_DECODER_RESID_MLP,
             FeaturePattern.IO,
         ]
     )
     use_cached: bool = True
-    batch_size: int = 5000
+    batch_size: int = 16000
 
 
 def register_saes():

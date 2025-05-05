@@ -180,6 +180,11 @@ class PatchConf:
 
 
 @dataclass
+class InterpConf:
+    sae_n_samples_per_latent: int = 16
+
+
+@dataclass
 class ExperimentConf:
     name: str = field(default="test_experiment")
     output_dir: str = field(default_factory=lambda: os.path.join(os.getcwd(), "runs"))
@@ -210,6 +215,7 @@ class BLUEGLASSConf:
     feature: FeatureConf = field(default_factory=FeatureConf)
     patch: PatchConf = field(default_factory=PatchConf)
     sae: SAEConf = field(default_factory=SAEConf)
+    interp: InterpConf = field(default_factory=InterpConf)
     probe: ProbeConf = field(default_factory=ProbeConf)
     layer_knock_off: LayerKnockoffExpConf = field(default_factory=LayerKnockoffExpConf)
 

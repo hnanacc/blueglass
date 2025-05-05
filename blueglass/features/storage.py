@@ -26,12 +26,17 @@ from .types import DistFormat
 
 logger = setup_blueglass_logger(__name__)
 
-
 class Reader:
     def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model):
         self.batch_size = conf.feature.batch_size
         self.path = prepare_feature_disk_path(conf, name, dataset, model)
         self.stream = ds.dataset(self.path, format="parquet")
+
+        if (exp := self.build_filter_expression(conf)) is not None:
+            self.stream = self.stream.filter(exp)
+
+    def build_filter_expression(self, conf: BLUEGLASSConf):
+        return None
 
     def infer_schema(self) -> pa.Schema:
         return self.stream.schema

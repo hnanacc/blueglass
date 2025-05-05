@@ -223,6 +223,7 @@ class AutoEncoder(nn.Module):
             chunk = tensor[i : i + chunk_size]
             chunk_val = row_fn(chunk)
             total = chunk_val if total is None else total + chunk_val
+        assert total is not None, "Expected total to be not None."
         return total
 
     @AvoidCUDAOOM.retry_if_cuda_oom
@@ -328,13 +329,13 @@ class AutoEncoder(nn.Module):
 
     @torch.no_grad()
     def set_decoder_to_unit_norm(self, grads=True):
-        normed = self.decoder.weight / self.decoder.weight.norm(dim=0, keepdim=True)
-        self.decoder.weight.data = normed
-
-        if not grads:
+        if not self.use_decoder_norm:
             return
 
-        if self.use_decoder_norm:
+        normed = self.decoder.weight / self.decoder.weight.norm(dim=0, keepdim=True)
+        self.decoder.weight.data = normed
+        
+        if not grads:
             return
 
         assert (
@@ -366,7 +367,8 @@ class AutoEncoder(nn.Module):
         return {
             **self.compute_losses(true_features, pred_features, interims, ctx),
             "pred_features": pred_features,
-            "proc_interims": interims,
+            "prep_interims": ctx["raw_interims"],
+            "posp_interims": interims,
             "latents_dead_since": self.latents_dead_since,
             "latents_fire_count": self.latents_fire_count,
             "top_latents": ctx["top_latents"],

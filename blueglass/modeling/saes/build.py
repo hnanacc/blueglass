@@ -37,7 +37,9 @@ class GroupedSAE(nn.Module):
     def _infer_latents_dim(self) -> int:
         latents_per_name = set([sae.latents_dim for sae in self.sae_per_name.values()])
         assert len(latents_per_name) == 1, "Expected all latents dims to be same."
-        return latents_per_name.pop()
+        latents_dim = latents_per_name.pop()
+        assert isinstance(latents_dim, int), "Expected latents_dim to be int."
+        return latents_dim
 
     def transform_name(self, name: str, reverse: bool = False) -> str:
         if reverse:
@@ -46,7 +48,11 @@ class GroupedSAE(nn.Module):
             return name.replace(".", "__")
 
     def forward(
-        self, batched_inputs_per_name: Dict[str, Any], *args, **kwargs
+        self,
+        batched_inputs_per_name: Dict[str, Any],
+        *args,
+        flatten_records: bool = True,
+        **kwargs,
     ) -> Dict[str, Any]:
         records_per_name = {
             name: self.sae_per_name[self.transform_name(name)](
@@ -55,11 +61,14 @@ class GroupedSAE(nn.Module):
             for name, batched_inputs in batched_inputs_per_name.items()
         }
 
-        return {
-            f"{name}/{attr}": items
-            for name, records in records_per_name.items()
-            for attr, items in records.items()
-        }
+        if flatten_records:
+            return {
+                f"{name}/{attr}": items
+                for name, records in records_per_name.items()
+                for attr, items in records.items()
+            }
+
+        return records_per_name
 
     @torch.no_grad()
     def set_decoder_to_unit_norm(self, grads=True):

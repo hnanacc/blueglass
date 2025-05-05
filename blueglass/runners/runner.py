@@ -67,14 +67,14 @@ class Runner:
     ) -> LRScheduler:
         """
         Build a learning rate scheduler based on configuration.
-        
+
         Args:
             conf: Configuration object containing scheduler settings
             optimizer: The optimizer to schedule
-            
+
         Returns:
             LRScheduler: Configured learning rate scheduler
-            
+
         Raises:
             ValueError: If an unsupported scheduler type is specified
         """
@@ -254,6 +254,11 @@ class Runner:
         )
         return d, m, e
 
+    def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
+        d = self.build_infer_dataloader(self.conf)
+        m = self.build_model(self.conf)
+        return d, m
+
     def train(self):
         (
             self.dataloader,
@@ -290,8 +295,7 @@ class Runner:
         return inference_on_dataset(model, dataloader, evaluator)
 
     def infer(self):
-        self.dataloader = self.build_infer_dataloader(self.conf)
-        self.model.eval()
+        self.dataloader, self.model = self.initialize_infer_attrs()
         for self.step, data in enumerate(self.dataloader):
             records_dict = self.run_step(data)
 
@@ -314,7 +318,7 @@ class Runner:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
         if not comm.is_main_process():
             return
-        
+
         self._checkpoint()
         if self.conf.experiment.use_wandb:
             checkpoint_name = f"model_{self.step}"
@@ -330,9 +334,15 @@ class Runner:
             # Add the checkpoint file
             artifact.add_file(str(save_file))
             wandb.log_artifact(artifact)
-        save_locally=self.conf.runner.save_ckpt_locally
+        save_locally = self.conf.runner.save_ckpt_locally
         if save_locally:
-            logger.info("Checkpointing to storage locally is set to True, hence saving it locally.")
+            logger.info(
+                "Checkpointing to storage locally is set to True, hence saving it locally."
+            )
         else:
-            os.remove(os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth"))
-            logger.info("Checkpointing to storage locally is set to False, hence deleting after saving it in wandb.")
+            os.remove(
+                os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
+            )
+            logger.info(
+                "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
+            )

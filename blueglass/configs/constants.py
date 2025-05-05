@@ -101,6 +101,7 @@ class Runner(str, Enum):
     FEATURE_EXTRACT = "feature_extract"
     VLM_LINEAR_PROBE = "vlm_linear_probe"
     SAE_LINEAR_PROBE = "sae_linear_probe"
+    INTERPRETATION = "interpretation"
     SAE = "sae"
 
 

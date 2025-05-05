@@ -8,7 +8,8 @@ from .modelstore import ModelstoreRunner
 from .layers_patch import LayersPatchRunner
 from .features_extract import FeatureExtractRunner
 from .probes_linear_vlm import VLMLinearProbeRunner
-from .probes_linear_sae import SAELinearProbeRunner
+from .sae_probe import SAELinearProbeRunner
+from .sae_interp import InterpretationRunner
 from .saes import SAERunner
 
 logger = setup_blueglass_logger(__name__)
@@ -22,6 +23,7 @@ def build_runner(conf: BLUEGLASSConf) -> Runner:
         RunnerType.SAE_LINEAR_PROBE: SAELinearProbeRunner,
         RunnerType.SAE: SAERunner,
         RunnerType.LAYERS_PATCH: LayersPatchRunner,
+        RunnerType.INTERPRETATION: InterpretationRunner,
     }
 
     runner_class = runner_classes.get(conf.runner.name)

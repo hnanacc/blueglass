@@ -1,6 +1,9 @@
 # Project specific.
 
 outputs
+experiment
+temp
+
 
 
 # Generic.
