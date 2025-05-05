@@ -30,8 +30,7 @@ from blueglass.configs import (
     BLUEGLASSConf,
     LabelMatchEvaluatorConf,
 )
-from typing import List, Optional
-
+from typing import Optional, List
 
 @dataclass
 class SAEVariantConf(SAEConf):
@@ -70,7 +69,7 @@ class SAEFeatureConf(FeatureConf):
         ]
     )
     use_cached: bool = True
-    batch_size: int = 16000
+    train_batch_size: int = 5000
 
 
 def register_saes():

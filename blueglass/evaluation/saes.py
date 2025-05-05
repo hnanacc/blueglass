@@ -5,9 +5,11 @@ from typing import Dict, Any
 from torch import Tensor
 import numpy as np
 import torch
+from collections import defaultdict
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
-from collections import defaultdict
+
+from blueglass.runners.utils import maybe_strip_ddp
 from blueglass.configs import BLUEGLASSConf
 from blueglass.structures.types import is_comm_dict, is_comm_list_of_dict
 from blueglass.third_party.detectron2.evaluation import DatasetEvaluator
@@ -17,8 +19,9 @@ import scienceplots
 
 
 class SAEEvaluator(DatasetEvaluator):
-    def __init__(self, conf: BLUEGLASSConf):
+    def __init__(self, conf: BLUEGLASSConf, step=-1):
         self.conf = conf
+        self.step = step
         self.metric_terms = {
             "loss_reconstr",
             "norm_l0",
@@ -68,42 +71,43 @@ class SAEEvaluator(DatasetEvaluator):
         Returns:
             Dictionary containing distribution and histogram figures
         """
-        try:
-            # Normalize inputs
-            latents_fire_count = self.normalize(
-                torch.randn(100)
-            )  # or torch.rand(100) for [0,1] range
-            latents_dead_since = self.normalize(torch.randn(100))
+        # try:
+        #     # Normalize inputs
+        #     latents_fire_count = self.normalize(
+        #         torch.randn(100)
+        #     )  # or torch.rand(100) for [0,1] range
+        #     latents_dead_since = self.normalize(torch.randn(100))
 
-            # Create figures
-            dist_fig = plt.figure(figsize=(12, 10))
-            hist_fig = plt.figure(figsize=(12, 6))
+        #     # Create figures
+        #     dist_fig = plt.figure(figsize=(12, 10))
+        #     hist_fig = plt.figure(figsize=(12, 6))
 
-            # Dummy distribution plot (KDE)
-            ax1 = dist_fig.add_subplot(211)
-            ax1.set_title("Normalized Fire Count Distribution")
-            ax1.plot([0, 1], [0, 1], "r--")  # Simple diagonal line
-            ax1.set_ylabel("Density")
+        #     # Dummy distribution plot (KDE)
+        #     ax1 = dist_fig.add_subplot(211)
+        #     ax1.set_title("Normalized Fire Count Distribution")
+        #     ax1.plot([0, 1], [0, 1], "r--")  # Simple diagonal line
+        #     ax1.set_ylabel("Density")
 
-            ax2 = dist_fig.add_subplot(212)
-            ax2.set_title("Normalized Dead Since Distribution")
-            ax2.plot([0, 1], [1, 0], "b--")  # Inverse diagonal line
-            ax2.set_ylabel("Density")
+        #     ax2 = dist_fig.add_subplot(212)
+        #     ax2.set_title("Normalized Dead Since Distribution")
+        #     ax2.plot([0, 1], [1, 0], "b--")  # Inverse diagonal line
+        #     ax2.set_ylabel("Density")
 
-            # Dummy histogram
-            ax3 = hist_fig.add_subplot(111)
-            ax3.set_title("Combined Latent Distribution")
-            ax3.hist([0.2, 0.5, 0.5, 0.6, 0.8], bins=10, alpha=0.5)  # Simple histogram
-            ax3.set_xlabel("Normalized Values")
-            ax3.set_ylabel("Frequency")
+        #     # Dummy histogram
+        #     ax3 = hist_fig.add_subplot(111)
+        #     ax3.set_title("Combined Latent Distribution")
+        #     ax3.hist([0.2, 0.5, 0.5, 0.6, 0.8], bins=10, alpha=0.5)  # Simple histogram
+        #     ax3.set_xlabel("Normalized Values")
+        #     ax3.set_ylabel("Frequency")
 
-            plt.tight_layout()
+        #     plt.tight_layout()
 
-            return {"latents_dist": dist_fig, "latents_hist": hist_fig}
+        #     return {"latents_dist": dist_fig, "latents_hist": hist_fig}
 
-        except Exception as e:
-            plt.close("all")
-            raise RuntimeError(f"Visualization failed: {str(e)}")
+        # except Exception as e:
+        #     plt.close("all")
+        #     raise RuntimeError(f"Visualization failed: {str(e)}")
+        return {}
 
     def evaluate(self) -> Dict[str, Any]:
         comm.synchronize()
@@ -127,12 +131,14 @@ class SAEEvaluator(DatasetEvaluator):
             elif "latents_dead_since" in k:
                 latents_dead_since[k] = reduced.pop(k)
 
-        visuals = self.visualize_latents_distribution(
-            latents_fire_count, latents_dead_since
-        )
-        visuals = {f"visual_metrics/{k}": v for k, v in visuals.items()}
-        # TODO Fix visual plots
         visuals = {}
+        if self.step % self.conf.runner.visuals_eval_period == 0:
+
+            _visuals = self.visualize_latents_distribution(
+                latents_fire_count, latents_dead_since
+            )
+            visuals = {**visuals, **_visuals}
+
         # change the name to prevent conflict with train
         # losses while parsing for metrics in inference.
         for key in list(reduced.keys()):

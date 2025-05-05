@@ -31,14 +31,14 @@ class ResidFrame:
 
 @dataclass
 class IOFrame:
-    image_id: List[str]
+    image_id: List[int]
     filename: List[str]
     pred_box: Optional[List[list]] = None
-    pred_cls: Optional[List[list]] = None
-    pred_scr: Optional[List[list]] = None
-    conf_msk: Optional[List[list]] = None
+    pred_cls: Optional[List[int]] = None
+    pred_scr: Optional[List[float]] = None
+    conf_msk: Optional[List[bool]] = None
     token_ch: Optional[List[int]] = None
-    pred_ious: Optional[List[list]] = None
+    pred_ious: Optional[List[float]] = None
 
 
 LayerFrame = Union[MHAFrame, MLPFrame, ResidFrame, IOFrame]

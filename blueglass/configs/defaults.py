@@ -4,6 +4,7 @@
 import os
 from enum import Enum
 from dataclasses import dataclass, field
+from typing import Dict, Any, Optional, List, Iterator, Union
 import torch
 
 from typing import Literal, Optional, List, Tuple, Any
@@ -87,9 +88,10 @@ class RunnerConf:
 
     max_steps: int = 100_000
     logs_period: int = 1
-    eval_period: int = 1000
-    patch_eval_period: int = 2000
-    ckpt_period: int = 1000
+    eval_period: int = 200
+    patch_eval_period: int = 500
+    visuals_eval_period: int = 50
+    ckpt_period: int = 200
     resume: bool = False
     save_ckpt_locally: bool = field(default=False)
 
@@ -110,7 +112,7 @@ class RunnerConf:
 @dataclass
 class SAEConf:
     variant: SAEVariant = SAEVariant.TOPK
-    expansion_factor: int = 32
+    expansion_factor: int = 256
 
     use_feature_norm: bool = True
     use_feature_bias: bool = True
@@ -127,9 +129,12 @@ class SAEConf:
 
     threshold_top_latents: float = 0.5
     threshold_update_rate: float = 0.01
-    threshold_latents_dead: int = 1_00_000
-    min_threshold_latents_dead: int = 10_000
+    threshold_latents_dead: int = 2_000_000
+    min_threshold_latents_dead: int = 1_00_000
     threshold_latents_dense: float = 0.5
+
+    config_path: Optional[str] = None
+    checkpoint_path: Optional[str] = None
 
 
 @dataclass
@@ -162,8 +167,10 @@ class FeatureConf:
     path: Optional[str] = None
     use_cached: bool = False
 
-    batch_size: int = 512
+    train_batch_size: int = 512
+    test_batch_size: int = 512
     compute_confusion: bool = False
+    filter_column_scheme: Optional[Dict[str, Union[int, float, str]]] = None
     max_rows_per_part: int = 500_000
 
 

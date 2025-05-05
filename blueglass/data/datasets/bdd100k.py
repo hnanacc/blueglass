@@ -3,6 +3,7 @@
 
 import os
 import json
+import random
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from typing import Dict, List, Tuple, Any
 import torch
@@ -26,6 +27,10 @@ BDD100K_CLASSES = [
     "traffic light",
     "traffic sign",
 ]
+
+
+BDD100K_CLASSES = ["pedestrian"]
+# BDD100K_CLASSES = ["car"]
 
 IGNORED_CLASSES = ["other vehicle", "other person", "trailer"]
 
@@ -77,11 +82,20 @@ def scalabel_to_d2(sample: Dict[str, Any]):
     return make_instance(boxes, clses, descs)
 
 
+def balance_dataset_single_class(dataset, keep_ratio=0.3, balanced=False):
+    if not balanced:
+        return dataset
+    pos = [x for x in dataset if len(x["instances"]) > 0]
+    neg = [x for x in dataset if len(x["instances"]) == 0]
+    keep_neg = random.sample(neg, int(len(neg) * keep_ratio))
+    return pos + keep_neg
+
+
 def prepare_instances(images_path: str, labels_path: str):
     with open(labels_path) as f:
         samples = sorted(json.load(f), key=lambda d: d["name"])
 
-    return [
+    prepared_instances = [
         {
             "file_name": os.path.join(images_path, sample["name"]),
             "image_id": sample["name"].split(".")[0],
@@ -91,6 +105,10 @@ def prepare_instances(images_path: str, labels_path: str):
         }
         for sample in samples
     ]
+    prepared_instances = balance_dataset_single_class(
+        prepared_instances, keep_ratio=0.3
+    )
+    return prepared_instances
 
 
 BDD100K_IMAGE_TMPL = f"{DATASET_DIR}/bdd100k/images/100k" + "/{}"

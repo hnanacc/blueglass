@@ -197,131 +197,49 @@ class AutoEncoder(nn.Module):
     def _loss_sparsity(self, interims: Tensor) -> Tensor:
         return self.coeff_sparsity * self._norm_l1(interims)
 
-    def _chunked_reduce(
-        self,
-        tensor: Tensor,
-        row_fn: Callable[[Tensor], Tensor],
-        chunk_size: int = ROW_CHUNK_SIZE,
-    ) -> Tensor:
-        """
-        Applies a row-wise reduction function to the input tensor in chunks to prevent
-        GPU out-of-memory (OOM) issues during large-batch computations.
-
-        Args:
-            tensor (Tensor): The input tensor to process in row-wise chunks.
-            row_fn (Callable[[Tensor], Tensor]): A function applied to each chunk. It should
-                return a scalar tensor or a partial sum that will be accumulated.
-            chunk_size (int): Maximum number of rows to process at once.
-
-        Returns:
-            Tensor: The accumulated result from all chunks (e.g., total sum or count).
-        """
-        torch.cuda.empty_cache()
-        chunk_size = min(ROW_CHUNK_SIZE, tensor.shape[0])
-        total = None
-        for i in range(0, tensor.shape[0], min(chunk_size, tensor.shape[0])):
-            chunk = tensor[i : i + chunk_size]
-            chunk_val = row_fn(chunk)
-            total = chunk_val if total is None else total + chunk_val
-        assert total is not None, "Expected total to be not None."
-        return total
-
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _norm_l0(self, interims: Tensor) -> Tensor:
-        # return (interims > 0).float().sum(dim=-1).mean()
-
-        chunk_norml0 = self._chunked_reduce(
-            tensor=interims,
-            row_fn=lambda chunk: (chunk > 0).float().sum(dim=-1).sum(),
-            chunk_size=ROW_CHUNK_SIZE,
-        )
-        norml0 = self._to_like(torch.tensor(chunk_norml0), interims) / self._to_like(
-            torch.tensor(interims.shape[0]), interims
-        )
-        return norml0
+        return (interims > 0).float().sum(dim=-1).mean()
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _norm_l1(self, interims: Tensor) -> Tensor:
-        chunk_norml1 = self._chunked_reduce(
-            tensor=interims,
-            row_fn=lambda chunk: chunk.float().abs().sum(dim=-1).sum(),
-            chunk_size=ROW_CHUNK_SIZE,
-        )
-        norml1 = self._to_like(torch.tensor(chunk_norml1), interims) / self._to_like(
-            torch.tensor(interims.shape[0]), interims
-        )
-        return norml1
+        return interims.float().abs().sum(dim=-1).mean()
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _dense_pct(self) -> Tensor:
-        chunk_dense_pct = self._chunked_reduce(
-            tensor=self.latents_fire_count,
-            row_fn=lambda chunk: (chunk > self.threshold_dense).sum(),
-            chunk_size=ROW_CHUNK_SIZE,
-        )
-        dense_pct = (
-            self._to_like(torch.tensor(chunk_dense_pct), self.latents_fire_count)
-            / self._to_like(
-                torch.tensor(self.feature_seen_count), self.latents_fire_count
-            )
-        ) * 100
-        return dense_pct
+        return (
+            self.latents_fire_count > self.threshold_dense
+        ).sum() / self.feature_seen_count.float()
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _dead_pct(self) -> Tensor:
-        latents = self.latents_dead_since
-        chunk_dead_pct = self._chunked_reduce(
-            tensor=latents,
-            row_fn=lambda chunk: (chunk > self.threshold_dead).sum(),
-            chunk_size=ROW_CHUNK_SIZE,
-        )
-
-        dead_pct = (
-            self._to_like(torch.tensor(chunk_dead_pct), latents)
-            / self._to_like(torch.tensor(self.latents_dim), latents)
-        ) * 100
-        return dead_pct
+        num_dead = (self.latents_dead_since > self.threshold_dead).sum()
+        return (num_dead / float(self.latents_dim)) * 100
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _min_dead_pct(self) -> Tensor:
-        latents = self.latents_dead_since
-        chunk_min_dead_pct = self._chunked_reduce(
-            tensor=latents,
-            row_fn=lambda chunk: (chunk > self.min_threshold_dead).sum(),
-            chunk_size=ROW_CHUNK_SIZE,
-        )
+        num_dead = (self.latents_dead_since > self.min_threshold_dead).sum()
+        return (num_dead / float(self.latents_dim)) * 100
 
-        min_dead_pct = (
-            self._to_like(torch.tensor(chunk_min_dead_pct), latents)
-            / self._to_like(torch.tensor(self.latents_dim), latents)
-        ) * 100
-        return min_dead_pct
-
-    @AvoidCUDAOOM.retry_if_cuda_oom
     @torch.no_grad()
     def update_features_metrics(self, true_features: Tensor, _: Tensor):
         cur_feature_seen_cnt = torch.tensor(
             true_features.shape[0], dtype=torch.int, device=self.device
         )
+        cur_feature_seen_cnt = cur_feature_seen_cnt.to(self.device)
         comm.all_reduce(cur_feature_seen_cnt)
         self.feature_seen_count += cur_feature_seen_cnt
 
-    @AvoidCUDAOOM.retry_if_cuda_oom
     @torch.no_grad()
     def update_interims_metrics(self, interims: Tensor):
-        # Chunking this cur_latents_fire_cnt = (interims > 0).sum(dim=0)
-        cur_latents_fire_cnt = self._chunked_reduce(
-            tensor=interims,
-            row_fn=lambda chunk: (chunk > 0).sum(dim=0),
-            chunk_size=ROW_CHUNK_SIZE,
-        )
-
+        cur_latents_fire_cnt = (interims > 0).sum(dim=0)
         comm.all_reduce(cur_latents_fire_cnt)
         self.latents_fire_count += cur_latents_fire_cnt
 
         cur_feature_seen_cnt = torch.tensor(
             interims.shape[0], dtype=torch.int, device=self.device
         )
+        cur_feature_seen_cnt = cur_feature_seen_cnt.to(self.device)
         comm.all_reduce(cur_feature_seen_cnt)
 
         self.latents_dead_since += cur_feature_seen_cnt
@@ -374,5 +292,7 @@ class AutoEncoder(nn.Module):
             "top_latents": ctx["top_latents"],
         }
 
-    def _to_like(self, tensor: Tensor, ref: Tensor) -> Tensor:
-        return tensor.to(dtype=ref.dtype, device=ref.device)
+    @property
+    def sparse_codes(self) -> Tensor:
+        decoder = self.decoder
+        return decoder.weight.T.detach() # [N, D]

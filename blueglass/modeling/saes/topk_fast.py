@@ -123,7 +123,7 @@ class TopKFast(AutoEncoder):
             return y + self.feature_bias
         else:
             return y
-
+    
     def encode(
         self, true_features: Tensor, ctx: Dict[str, Any]
     ) -> Tuple[Tensor, Dict[str, Any]]:
@@ -155,7 +155,9 @@ class TopKFast(AutoEncoder):
         ctx["top_values"] = topk_values
         ctx["top_latents"] = top_indices
 
-        interims_topk = torch.zeros_like(interims).scatter(-1, top_indices, topk_values)
+        interims_topk = interims.clone()
+        interims_topk.zero_()
+        interims_topk.scatter_(-1, top_indices, topk_values)
 
         return interims_topk, ctx
 
@@ -259,3 +261,8 @@ class TopKFast(AutoEncoder):
             self.decoder.data,
             "d_sae, d_sae feature_dim -> d_sae feature_dim",
         )
+
+    @property
+    def sparse_codes(self) -> Tensor:
+        decoder = self.decoder
+        return decoder.data # [N, D]

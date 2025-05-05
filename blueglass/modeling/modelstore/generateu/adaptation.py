@@ -38,7 +38,7 @@ class GenerateU(nn.Module):
             conf.model.checkpoint_path, resume=False
         )
         self.transforms = T.ResizeShortestEdge([800], 1333, "choice")
-        self.device = torch.device("cuda")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         assert cfg.UNI, "model cannot be used in un-unified mode."
 

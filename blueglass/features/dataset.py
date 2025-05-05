@@ -40,7 +40,6 @@ class FeatureStream:
     def mapper(self, batch_per_name: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         raise NotImplementedError("Override in child class.")
 
-    @lru_cache
     def infer_feature_meta(self) -> Dict[str, Dict[str, Any]]:
         raise NotImplementedError("Override in child class.")
 
@@ -53,15 +52,14 @@ class FeatureStream:
 
 class StorageStream(FeatureStream):
     def __init__(
-        self, conf: BLUEGLASSConf, dataset: Datasets, model: Model, filter_scheme: str
+        self, conf: BLUEGLASSConf, dataset: Datasets, model: Model, filter_scheme: str, batch_size: int
     ):
         super().__init__(conf, model, dataset, filter_scheme)
-        self.source = FeatureStorage(conf, dataset, model, filter_scheme)
+        self.source = FeatureStorage(conf, dataset, model, filter_scheme, batch_size)
 
     def mapper(self, batch_per_name: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         return self.source.format(batch_per_name)
 
-    @lru_cache
     def infer_feature_meta(self) -> Dict[str, Any]:
         logger.debug(f"fetching feature meta data.")
         meta = self.source.infer_storage_meta()
@@ -81,7 +79,7 @@ class StorageStream(FeatureStream):
 
 
 class InterceptorStream(FeatureStream):
-    def __init__(self, conf, dataset: Datasets, model: nn.Module, filter_scheme: str):
+    def __init__(self, conf, dataset: Datasets, model: nn.Module, filter_scheme: str, batch_size: int):
         super().__init__(conf, model, dataset, filter_scheme)
         assert isinstance(
             model, nn.Module
@@ -89,7 +87,7 @@ class InterceptorStream(FeatureStream):
 
         self.dataset = dataset
         self.model = FeatureInterceptor(conf, model)
-        self.batch_size = conf.feature.batch_size
+        self.batch_size = batch_size
 
         self.feature_meta = None
         self.buffer_per_name: Dict[str, deque] = defaultdict(deque)
@@ -100,7 +98,7 @@ class InterceptorStream(FeatureStream):
     @lru_cache
     def infer_feature_meta(self) -> Dict[str, Any]:
         if self.feature_meta is None:
-            dataloader = self._prepare_dataloader(self.conf, self.dataset)
+            dataloader = self._prepare_dataloader()
             batched_inputs = next(iter(dataloader))
             with torch.inference_mode():
                 _, batched_features = self.model(batched_inputs, record=True)
@@ -121,7 +119,7 @@ class InterceptorStream(FeatureStream):
         return self.feature_meta
 
     def __iter__(self) -> Iterator[Dict[str, Dict[str, Any]]]:
-        for batched_inputs in self._prepare_dataloader(self.conf, self.dataset):
+        for batched_inputs in self._prepare_dataloader():
             with torch.inference_mode():
                 _, batched_features = self.model(batched_inputs, record=True)
             self._enqueue_buffer(self._filtered(batched_features))
@@ -131,8 +129,8 @@ class InterceptorStream(FeatureStream):
         while self._is_buffer_left():
             yield self._dequeue_buffer()
 
-    def _prepare_dataloader(self, conf: BLUEGLASSConf, dataset: Datasets):
-        return build_test_dataloader(dataset, conf.dataset.batch_size)
+    def _prepare_dataloader(self) -> DataLoader:
+        return build_test_dataloader(self.dataset, self.conf.dataset.batch_size)
 
     def _filtered(self, items: Dict[str, Any]) -> Dict[str, Any]:
         return {
@@ -217,23 +215,26 @@ class FeatureDataset(IterableDataset):
         conf: BLUEGLASSConf,
         dataset: Datasets,
         model: Union[Model, nn.Module],
-        mode: Literal["train", "test"] = "test",
+        local_mode: Literal["train", "test"] = "test",
         filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",
     ):
         self.conf = conf
         self.dataset = dataset
         self.model = model
-        self.mode = mode
+        self.local_mode = local_mode
         self.filter_scheme = filter_scheme
-        self.batch_size = conf.feature.batch_size
+        if self.local_mode == "train":
+            self.batch_size = conf.feature.train_batch_size
+        else:
+            self.batch_size = conf.feature.test_batch_size
         self.stream = (
-            InterceptorStream(conf, dataset, model, filter_scheme)
+            InterceptorStream(conf, dataset, model, filter_scheme, self.batch_size)
             if isinstance(model, nn.Module)
-            else StorageStream(conf, dataset, model, filter_scheme)
+            else StorageStream(conf, dataset, model, filter_scheme, self.batch_size)
         )
 
     def __len__(self):
-        if self.mode == "train":
+        if self.local_mode == "train":
             raise AttributeError("Infinite train loader doesn't provide length.")
 
         meta = self.stream.infer_feature_meta()
@@ -243,6 +244,7 @@ class FeatureDataset(IterableDataset):
 
         num_records = set(meta["num_records_per_name"].values())
         assert len(num_records) == 1, "Num records vary per name."
+        logger.warning(f"DEBUG: {meta['num_records_per_name'].values()}")
 
         return math.ceil(num_records.pop() / self.batch_size)
 
@@ -261,7 +263,7 @@ class FeatureDataset(IterableDataset):
         return batch_sizes.pop()
 
     def __iter__(self):
-        match self.mode:
+        match self.local_mode:
             case "train":
                 while True:
                     for batch_per_name in self.stream:
@@ -278,10 +280,11 @@ def build_feature_dataloader(
     conf: BLUEGLASSConf,
     dataset: Datasets,
     model: Union[Model, nn.Module],
-    mode: Literal["train", "test"],
+    local_mode: Literal["train", "test"],
     filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",
+    num_workers: int = 1,
 ) -> DataLoader:
-    ds = FeatureDataset(conf, dataset, model, mode, filter_scheme)
+    ds = FeatureDataset(conf, dataset, model, local_mode, filter_scheme)
     mp = ds.mapper
 
     if isinstance(model, Model):
@@ -292,4 +295,7 @@ def build_feature_dataloader(
             .map(lambda batch: mp(batch))
         )
 
-    return DataLoader(ds, shuffle=(mode == "train"), batch_size=None)
+    if local_mode == "train":
+        return DataLoader(ds, shuffle=True, batch_size=None, num_workers=1, persistent_workers=False, pin_memory=False, prefetch_factor=1)
+    else:
+        return DataLoader(ds, shuffle=False, batch_size=None)

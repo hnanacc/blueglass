@@ -103,6 +103,7 @@ class Runner(str, Enum):
     SAE_LINEAR_PROBE = "sae_linear_probe"
     INTERPRETATION = "interpretation"
     SAE = "sae"
+    DECODER_CLUSTER = "decoder_cluster"
 
 
 class FeaturePattern(str, Enum):

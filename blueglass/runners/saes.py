@@ -4,19 +4,25 @@
 import os
 import json
 import wandb
+import concurrent.futures
 from omegaconf import OmegaConf
 import numpy as np
 import torch
+import umap.umap_ as umap
+from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
+
 from torch import Tensor, nn, autocast
 from torch.optim import Optimizer, AdamW
 from functools import lru_cache
 from collections import defaultdict, ChainMap
+from .utils import maybe_strip_ddp
 from blueglass.utils.logger_utils import setup_blueglass_logger
-from typing import Iterable, List, Dict, Any, Tuple, Union
+from typing import Iterable, List, Dict, Any, Tuple, Union, Optional
 from blueglass.configs import BLUEGLASSConf, Model, FeaturePattern, Precision
 from blueglass.runners import Runner
 from blueglass.modeling import build_model
-from blueglass.modeling.saes import build_sae, GroupedSAE
+from blueglass.modeling.saes import GroupedSAE
 from blueglass.evaluation import SAEEvaluator
 from blueglass.features import (
     FeatureDataset,
@@ -43,12 +49,12 @@ class SAERunner(Runner):
         super().__init__(conf)
         self.base_lr = conf.runner.lr
         self.patch_eval_period = conf.runner.patch_eval_period
+        self.visuals_eval_period = conf.runner.visuals_eval_period
         self.warmup_steps = conf.runner.warmup_steps
         self.device = DEVICE
         self.feature_model = self._frozen(build_model(conf))
         self.max_grad_norm = conf.runner.max_grad_norm
         self.vanilla_fm_metrics = None
-        assert isinstance(self.precision, torch.dtype), "Invalid precision."
 
     def _frozen(self, model: nn.Module):
         for p in model.parameters():
@@ -65,6 +71,7 @@ class SAERunner(Runner):
             self._prepare_model_for_store(conf),
             "train",
             self.prepare_filter_scheme(),
+            num_workers=self.conf.num_data_workers,
         )
 
     def build_model(self, conf) -> nn.Module:
@@ -140,7 +147,7 @@ class SAERunner(Runner):
 
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
-        model = self.maybe_strip_ddp(self.model)
+        model = maybe_strip_ddp(self.model)
         assert isinstance(model, GroupedSAE), "Expected module to be GroupedSAE"
         model.set_decoder_to_unit_norm()
 
@@ -151,7 +158,7 @@ class SAERunner(Runner):
 
     def _build_patchers(self) -> Dict[str, Patcher]:
 
-        model = self.maybe_strip_ddp(self.model)
+        model = maybe_strip_ddp(self.model)
 
         built_patchers = {
             (t_name := model.transform_name(name, reverse=True)): SAEPatcher(
@@ -160,77 +167,6 @@ class SAERunner(Runner):
             for name, sae in model.eval().sae_per_name.items()
         }
         return built_patchers
-
-    def test(self) -> Dict[str, Any]:
-
-        # Step 1. Measure SAE metrics on test data.
-        fm = self._prepare_model_for_store(self.conf)
-        fd = build_feature_dataloader(
-            self.conf, self.conf.dataset.test, fm, "test", self.prepare_filter_scheme()
-        )
-        fe = SAEEvaluator(self.conf)
-        logger.info("Evaluation for SAE metrics.")
-        records_feature = inference_on_dataset(self.model, fd, fe)
-
-        # Step 2. Measure vanilla metrics on test data and feature model.
-        """
-        running vanilla evaluation only once for the entire run
-        """
-        records_patcher = {}
-        if self.vanilla_fm_metrics is None:
-            ds = build_test_dataloader(
-                self.conf.dataset.test, self.conf.dataset.batch_size
-            )
-            ev = self.build_evaluator(self.conf)
-            logger.info("Evaluation for detection in VLM (vanilla).")
-            vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
-
-            self.vanilla_fm_metrics = vanilla_records_patcher
-            for metric in vanilla_records_patcher.keys():
-                for _metric_ in vanilla_records_patcher[metric].keys():
-                    records_patcher[f"vanilla/{metric}_{_metric_}"] = (
-                        vanilla_records_patcher[metric][_metric_]
-                    )
-        else:
-            vanilla_records_patcher = self.vanilla_fm_metrics
-            for metric in vanilla_records_patcher.keys():
-                for _metric_ in vanilla_records_patcher[metric].keys():
-                    records_patcher[f"vanilla/{metric}_{_metric_}"] = (
-                        vanilla_records_patcher[metric][_metric_]
-                    )
-
-        if self.step % self.patch_eval_period == 0:
-            """
-            Executes inference for all ad-hoc models registered with the base model
-            """
-            # Step 2a. Measure metrics with patcher on test data and feature model.
-            test_patcher = self.patcher_test()
-            records_patcher = records_patcher | test_patcher
-
-        return {**records_feature, **records_patcher}
-
-    def patcher_test(self) -> Dict[str, Any]:
-
-        records_patcher = {}
-        built_patchers = self._build_patchers()
-        ds = build_test_dataloader(self.conf.dataset.test, self.conf.dataset.batch_size)
-        for name, _single_patcher in built_patchers.items():
-            single_patcher = {name: _single_patcher}
-            dm = FeatureInterceptor(
-                self.conf, self.feature_model, patchers_per_name=single_patcher
-            )
-            ev = self.build_evaluator(self.conf)
-            logger.info(f"Evaluation for detection in VLM with patcher ({name}).")
-            _records_patcher = inference_on_dataset(
-                dm, ds, ev, fwd_kwargs={"patch": True}
-            )
-            for metric in _records_patcher.keys():
-                for _metric_ in _records_patcher[metric].keys():
-                    records_patcher[f"{name}/{metric}_{_metric_}"] = _records_patcher[
-                        metric
-                    ][_metric_]
-
-        return records_patcher
 
     def process_records(
         self, gathered_records: List[Dict[str, Any]]
@@ -313,3 +249,139 @@ class SAERunner(Runner):
             metrics_dict = metrics_dict | metric_fitness_dict
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
+
+    def test(self) -> Dict[str, Any]:
+        """
+        running vanilla evaluation only once for the entire run
+        """
+        records_feature, records_patcher, records_visuals = {}, {}, {}
+        if self.step % self.eval_period == 0:
+            # Step 1. Measure SAE metrics on test data.
+            fm = self._prepare_model_for_store(self.conf)
+            fd = build_feature_dataloader(
+                self.conf,
+                self.conf.dataset.test,
+                fm,
+                "test",
+                self.prepare_filter_scheme(),
+            )
+            fe = SAEEvaluator(self.conf, self.step)
+            logger.info("Evaluation for SAE metrics.")
+            records_feature = inference_on_dataset(self.model, fd, fe)
+
+            # Step 2. Measure vanilla metrics on test data and feature model.
+            if self.vanilla_fm_metrics is None:
+                ds = build_test_dataloader(
+                    self.conf.dataset.test, self.conf.dataset.batch_size
+                )
+                ev = self.build_evaluator(self.conf)
+                logger.info("Evaluation for detection in VLM (vanilla).")
+                vanilla_records_patcher = inference_on_dataset(
+                    self.feature_model, ds, ev
+                )
+
+                self.vanilla_fm_metrics = vanilla_records_patcher
+            else:
+                vanilla_records_patcher = self.vanilla_fm_metrics
+
+            for metric in vanilla_records_patcher.keys():
+                for _metric_ in vanilla_records_patcher[metric].keys():
+                    records_patcher[f"vanilla/{metric}_{_metric_}"] = (
+                        vanilla_records_patcher[metric][_metric_]
+                    )
+        if self.step % self.patch_eval_period == 0:
+            """
+            Executes inference for all ad-hoc models registered with the base model
+            """
+            # Step 2a. Measure metrics with patcher on test data and feature model.
+            test_patcher = self.patcher_test()
+            records_patcher = records_patcher | test_patcher
+
+        if self.step % self.visuals_eval_period == 0:
+            records_visuals = self.visualise_metrics()
+
+        return {**records_feature, **records_patcher, **records_visuals}
+
+    def patcher_test(self) -> Dict[str, Any]:
+
+        records_patcher = {}
+        built_patchers = self._build_patchers()
+        ds = build_test_dataloader(self.conf.dataset.test, self.conf.dataset.batch_size)
+        for name, _single_patcher in built_patchers.items():
+            single_patcher = {name: _single_patcher}
+            dm = FeatureInterceptor(
+                self.conf, self.feature_model, patchers_per_name=single_patcher
+            )
+            ev = self.build_evaluator(self.conf)
+            logger.info(f"Evaluation for detection in VLM with patcher ({name}).")
+            _records_patcher = inference_on_dataset(
+                dm, ds, ev, fwd_kwargs={"patch": True}
+            )
+            for metric in _records_patcher.keys():
+                for _metric_ in _records_patcher[metric].keys():
+                    records_patcher[f"{name}/{metric}_{_metric_}"] = _records_patcher[
+                        metric
+                    ][_metric_]
+
+        return records_patcher
+
+    def plot_reduced_decoders(self, sae, direc="row") -> plt.Figure:
+        decoder_weights = sae.sparse_codes.cpu().numpy()
+        if direc == "column":
+            decoder_weights = decoder_weights.T
+        reducer = umap.UMAP(n_components=2, random_state=42)
+        umap_proj = reducer.fit_transform(decoder_weights)
+        fig = plt.figure(figsize=(10, 8))
+        fig, ax = plt.subplots(figsize=(10, 8))  # ✅ Create explicit Axes
+
+        if umap_proj.shape[0] == 0 or np.isnan(umap_proj).any():
+            logger.warning(" Warning: UMAP projection is empty or NaN. Skipping plot.")
+            return fig
+
+        ax.set_title(f"SAE Decoder using UMap ({direc})")
+        ax.set_xlabel("UMAP-1")
+        ax.set_ylabel("UMAP-2")
+        ax.scatter(umap_proj[:, 0], umap_proj[:, 1], s=5, alpha=0.8)
+        fig.tight_layout()
+
+        return fig
+
+    def visualize_decoder_weights(self, direc="row") -> dict:
+        model = maybe_strip_ddp(self.model)
+        records = {}
+
+        # Helper to call plotter
+        def plot_one(name, sae):
+            fig = self.plot_reduced_decoders(sae, direc=direc)
+            return (name, fig)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+            futures = []
+            for name, sae in model.eval().sae_per_name.items():
+                futures.append(executor.submit(plot_one, name, sae))
+
+            for future in concurrent.futures.as_completed(futures):
+                name, fig = future.result()
+                records[f"{name}/{direc}"] = fig
+
+        return records
+
+    def visualise_metrics(self) -> Dict[str, Any]:
+        records_visuals = {}
+        if self.step % self.conf.runner.visuals_eval_period == 0:
+            visuals = {}
+            _visuals = self.visualize_decoder_weights(direc="row")
+            visuals = {**visuals, **_visuals}
+
+            _visuals = self.visualize_decoder_weights(direc="column")
+            visuals = {**visuals, **_visuals}
+
+            visuals = {f"decoder_weights/{k}": v for k, v in visuals.items()}
+            # TODO Fix visual plots
+            if visuals is not None:
+                for metric in visuals.keys():
+                    records_visuals[f"visual_metrics/{metric}"] = visuals[metric]
+
+            logger.info("Visual metrics have been updated.")
+
+        return records_visuals

@@ -2,6 +2,7 @@
 # SPDX: Apache-2.0
 
 import os
+import uuid
 import gc
 import wandb
 from blueglass.utils.logger_utils import setup_blueglass_logger
@@ -52,6 +53,9 @@ class Runner:
         self.ckpt_period = conf.runner.ckpt_period
         self.precision = getattr(torch, conf.runner.precision)
 
+        unique_id = uuid.uuid4().hex[:8]  # Short UUID (8 characters)
+        self.conf.experiment.output_dir = f"{conf.experiment.output_dir}/{unique_id}"
+
         assert (
             self.eval_period >= self.logs_period
         ), "invalid eval period and logs period, logs must be smaller than eval."
@@ -59,6 +63,7 @@ class Runner:
         assert (
             self.eval_period % self.logs_period == 0
         ), "invalid eval period and logs period, must be divisible."
+        assert isinstance(self.precision, torch.dtype), "Invalid precision."
 
     def build_scheduler(
         self,
@@ -108,8 +113,6 @@ class Runner:
         os.makedirs(path, exist_ok=True)
         return Checkpointer(model, path, optimizer=optimizer)
 
-    # TODO: Fix num_workers
-
     def build_infer_dataloader(self, conf: BLUEGLASSConf) -> DataLoader:
         return build_test_dataloader(
             conf.dataset.infer, conf.dataset.batch_size, conf.num_data_workers
@@ -133,7 +136,7 @@ class Runner:
 
     @lru_cache
     def prepare_filter_scheme(self, remove_io: bool = True) -> str:
-        patterns = self.conf.feature.patterns
+        patterns = self.conf.feature.patterns.copy()
         if remove_io:
             patterns.remove(FeaturePattern.IO)
         patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
@@ -160,11 +163,14 @@ class Runner:
         return losses_dict, metric_dict, extras_dict
 
     def register_metrics(self, records_dict: Dict[str, Any]):
+        if self.step % self.logs_period != 0:
+            return None
+        
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
         }
-
+        
         gathered_records_dict = comm.gather(records_dict)
 
         if not comm.is_main_process():
@@ -191,7 +197,7 @@ class Runner:
         if "metric_fitness" in metric_dict and self.best_tracker.is_best(
             metric_dict["metric_fitness"], self.step
         ):
-            self.checkpoint()
+            self.checkpoint(force_save=True)
         else:
             metric_dict["metric_fitness"] = self.best_tracker.best()
 
@@ -200,6 +206,10 @@ class Runner:
             for i, group in enumerate(self.optimizer.param_groups)
         }
         if self.conf.experiment.use_wandb:
+            if len(visual_metric_dict) > 0:
+                visual_metric_dict = {
+                    k: wandb.Image(v) for k, v in visual_metric_dict.items()
+                }
             wandb.log(
                 {
                     **losses_dict,
@@ -254,12 +264,16 @@ class Runner:
         )
         return d, m, e
 
+<<<<<<< HEAD
     def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
         d = self.build_infer_dataloader(self.conf)
         m = self.build_model(self.conf)
         return d, m
 
     def train(self):
+=======
+    def train(self) -> None:
+>>>>>>> cb0b420872c89721538a6b4c66b7573630490d15
         (
             self.dataloader,
             self.model,
@@ -276,26 +290,32 @@ class Runner:
             if self.step <= self.warmup_steps:
                 continue
 
-            if self.step % self.eval_period == 0:
-                records_dict["metrics"] = self.test()
-                self.model = self.model.train()
+            records_dict["metrics"] = self.test()
+            self.model = self.model.train()
+            
+            self.register_metrics(records_dict)
 
-            if self.step % self.logs_period == 0:
-                self.register_metrics(records_dict)
-
-            if self.step % self.ckpt_period == 0:
-                self.checkpoint()
+            self.checkpoint()
 
             del records_dict
             torch.cuda.empty_cache()
             gc.collect()
 
     def test(self) -> Dict[str, Any]:
-        dataloader, model, evaluator = self.initialize_test_attrs()
-        return inference_on_dataset(model, dataloader, evaluator)
+        records_test_dict = {}
+        if self.step % self.eval_period == 0 or self.conf.runner.mode == "test":
+            dataloader, model, evaluator = self.initialize_test_attrs()
+            records_test_dict = inference_on_dataset(model, dataloader, evaluator)
+        return records_test_dict
 
+<<<<<<< HEAD
     def infer(self):
         self.dataloader, self.model = self.initialize_infer_attrs()
+=======
+    def infer(self) -> None:
+        self.dataloader = self.build_infer_dataloader(self.conf)
+        self.model.eval()
+>>>>>>> cb0b420872c89721538a6b4c66b7573630490d15
         for self.step, data in enumerate(self.dataloader):
             records_dict = self.run_step(data)
 
@@ -306,16 +326,9 @@ class Runner:
             if self.step % self.logs_period == 0:
                 logger.info(f"Processed {self.step} / {len(self.dataloader)}")
 
-    def maybe_strip_ddp(
-        self,
-        model: Union[nn.Module, nn.parallel.DistributedDataParallel],
-    ) -> Union[nn.Module, nn.parallel.DistributedDataParallel]:
-        if isinstance(model, nn.parallel.DistributedDataParallel):
-            return model.module
-        return model
-
-    def checkpoint(self):
+    def checkpoint(self, force_save=False) -> None:
         assert hasattr(self, "checkpointer"), "checkpointer not initialized."
+<<<<<<< HEAD
         if not comm.is_main_process():
             return
 
@@ -346,3 +359,37 @@ class Runner:
             logger.info(
                 "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
             )
+=======
+        # All processes must reach here before proceeding
+        if not (force_save or self.step % self.ckpt_period == 0):
+            return None
+        
+        if comm.is_main_process():
+            self._checkpoint()
+            if self.conf.experiment.use_wandb:
+                checkpoint_name = f"model_{self.step}"
+                basename = "{}.pth".format(checkpoint_name)
+                save_file = os.path.join(self.checkpointer.save_dir, basename)
+
+                artifact = wandb.Artifact(
+                    name=f"{self.runner_model_name}-step-{self.step}",  # Unique name per checkpoint
+                    type=self.runner_name,
+                    description=f"Model checkpoint at step {self.step}",
+                    metadata={"step": self.step, "framework": "PyTorch"},
+                )
+                # Add the checkpoint file
+                artifact.add_file(str(save_file))
+                wandb.log_artifact(artifact)
+            save_locally = self.conf.runner.save_ckpt_locally
+            if save_locally:
+                logger.info(
+                    "Checkpointing to storage locally is set to True, hence saving it locally."
+                )
+            else:
+                os.remove(
+                    os.path.join(self.checkpointer.save_dir, f"model_{self.step}.pth")
+                )
+                logger.info(
+                    "Checkpointing to storage locally is set to False, hence deleting after saving it in wandb."
+                )
+>>>>>>> cb0b420872c89721538a6b4c66b7573630490d15

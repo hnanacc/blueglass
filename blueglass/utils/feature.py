@@ -4,6 +4,7 @@
 import os
 import os.path as osp
 import shutil
+from functools import lru_cache
 from blueglass.utils.logger_utils import setup_blueglass_logger
 from huggingface_hub import (
     list_repo_files,
@@ -20,6 +21,15 @@ logger = setup_blueglass_logger(__name__)
 REPO_ID = "IntelLabs/BlueLens"
 REMOTE = "IntelLabs/BlueLens"
 
+
+@lru_cache
+def LIST_REPO_FILES():
+    remote_names = list_repo_files(REMOTE, repo_type="dataset")
+    return remote_names
+
+@lru_cache(maxsize=100)
+def LIST_ONDISK_FILES(search_path: str) -> List[str]:
+    return os.listdir(search_path)
 
 def _download_features_from_hf(
     model: str,
@@ -134,7 +144,7 @@ def fetch_remote_feature_names(
     conf: BLUEGLASSConf, dataset: Datasets, model: Model
 ) -> List[str]:
     filter_terms = _build_feature_path_tree(dataset, model)
-    remote_names = list_repo_files(REMOTE, repo_type="dataset")
+    remote_names = LIST_REPO_FILES()
     filter_names = [name for name in remote_names if filter_terms in name]
 
     return list(set([name.split("/")[-2] for name in filter_names]))
@@ -150,4 +160,4 @@ def fetch_ondisk_feature_names(conf: BLUEGLASSConf, dataset: Datasets, model: Mo
         logger.info("No features discovered on disk.")
         return []
 
-    return os.listdir(search_path)
+    return LIST_ONDISK_FILES(search_path)

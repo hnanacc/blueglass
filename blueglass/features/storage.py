@@ -4,31 +4,37 @@
 import re
 import os
 import os.path as osp
-import math
 import shutil
-from blueglass.utils.logger_utils import setup_blueglass_logger
+
+from functools import lru_cache
 import pandas as pd
-from collections import deque
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pyarrow.dataset as ds
-import torch
+
 from collections import OrderedDict
+from collections import deque
+from typing import Dict, Any, Optional, List, Iterator
+
+import torch
+from blueglass.utils.logger_utils import setup_blueglass_logger
 from blueglass.configs import BLUEGLASSConf, Model, Datasets
 from blueglass.utils.feature import (
     fetch_ondisk_feature_names,
     fetch_remote_feature_names,
     prepare_feature_disk_path,
 )
-from typing import Dict, Any, Optional, List, Iterator
+
 from .schema import build_arrow_schema
 from .types import DistFormat
 
 logger = setup_blueglass_logger(__name__)
 
-class Reader:
-    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model):
-        self.batch_size = conf.feature.batch_size
+class PyArrowReader:
+    def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model, batch_size: int=1):
+        # TODO: fix this.
+        self.batch_size = batch_size
         self.path = prepare_feature_disk_path(conf, name, dataset, model)
         self.stream = ds.dataset(self.path, format="parquet")
 
@@ -41,6 +47,7 @@ class Reader:
     def infer_schema(self) -> pa.Schema:
         return self.stream.schema
 
+    @lru_cache
     def num_records(self) -> int:
         return self.stream.count_rows(batch_size=1)
 
@@ -48,7 +55,7 @@ class Reader:
         yield from self.stream.to_batches(batch_size=self.batch_size)
 
 
-class Writer:
+class PyArrowWriter:
     def __init__(self, conf: BLUEGLASSConf, name: str, dataset: Datasets, model: Model):
         self.conf = conf
         self.max_row_count = conf.feature.max_rows_per_part
@@ -154,14 +161,16 @@ class FeatureStorage:
         dataset: Datasets,
         model: Model,
         filter_scheme: str = r"layer_(\d+).(\w+).(\w+)",
+        batch_size: int = 1,
     ):
         self.conf = conf
+        self.batch_size = batch_size
         self.dataset = dataset
         self.model = model
         self.filter_scheme = filter_scheme
         self.storage_meta: Optional[Dict[str, Any]] = None
-        self.reader_per_name: OrderedDict[str, Reader] = OrderedDict()
-        self.writer_per_name: OrderedDict[str, Writer] = OrderedDict()
+        self.reader_per_name: OrderedDict[str, PyArrowReader] = OrderedDict()
+        self.writer_per_name: OrderedDict[str, PyArrowWriter] = OrderedDict()
 
     def _convert_to_torch(self, batch: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         tensor_attrs = [
@@ -193,7 +202,7 @@ class FeatureStorage:
     def write(self, records_per_name: Dict[str, pd.DataFrame]):
         for name, records in records_per_name.items():
             if name not in self.writer_per_name:
-                self.writer_per_name[name] = Writer(
+                self.writer_per_name[name] = PyArrowWriter(
                     self.conf, name, self.dataset, self.model
                 )
             self.writer_per_name[name].stream_write(records)
@@ -226,7 +235,7 @@ class FeatureStorage:
         discover_feature_names = self._discover_feature_names()
         for name in discover_feature_names:
             if name not in self.reader_per_name:
-                _reader_per_name = Reader(self.conf, name, self.dataset, self.model)
+                _reader_per_name = PyArrowReader(self.conf, name, self.dataset, self.model, self.batch_size)
                 check_rows = _reader_per_name.stream.count_rows(batch_size=1)
                 if check_rows == 0:
                     logger.warning(

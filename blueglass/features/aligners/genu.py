@@ -126,7 +126,7 @@ class GENUAligner(Aligner):
 
         bis = records["batched_inputs"]
         sio = IOFrame(
-            image_id=[str(bi["image_id"]) for bi in bis],
+            image_id=[bi["image_id"] for bi in bis],
             filename=[str(bi["file_name"]) for bi in bis],
             true_box=[bi["instances"].gt_boxes.tensor for bi in bis],
             true_cls=[bi["instances"].gt_classes for bi in bis],
