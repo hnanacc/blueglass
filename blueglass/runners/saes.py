@@ -98,12 +98,12 @@ class SAERunner(Runner):
             else model
         )
         assert isinstance(module.latents_dim, int), "Expected latents_dim to be int."
-        return (
+        return super()._compute_scaled_lr(
             conf.runner.lr
             if conf.runner.lr is not None
             else 1e-4 / ((module.latents_dim / 2**14) ** 0.5)
         )
-
+        
     def build_optimizer(
         self,
         conf: BLUEGLASSConf,

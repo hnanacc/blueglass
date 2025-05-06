@@ -92,6 +92,9 @@ class Runner:
 
         raise ValueError("unsupported scheduler.")
 
+    def _compute_scaled_lr(self, lr: float) -> float:
+        return lr/comm.get_world_size()
+        
     def build_optimizer(
         self,
         conf: BLUEGLASSConf,
@@ -100,7 +103,7 @@ class Runner:
         if conf.runner.optimizer == "adamw":
             return AdamW(
                 model.parameters(),
-                conf.runner.lr,
+                self._compute_scaled_lr(conf.runner.lr),
                 conf.runner.betas,
                 conf.runner.eps,
                 conf.runner.weight_decay,
