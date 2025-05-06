@@ -11,14 +11,14 @@ from typing import List, Optional
 
 
 @dataclass
-class DecoderClusterVariantConf(SAEConf):
+class DecoderClusterSAEVariantConf(SAEConf):
     variant: SAEVariant = SAEVariant.TOPK_FAST
     topk: int = 32
     config_path: str = (
-        "/home/squtub/github_repos/blueglass/trained_saes/model_2000.json"
+        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128.json"
     )
     checkpoint_path: str = (
-        "/home/squtub/github_repos/blueglass/trained_saes/model_2000.pth"  #
+        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128_4000.pth"  #
     )
     # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
 
@@ -27,7 +27,7 @@ class DecoderClusterVariantConf(SAEConf):
 class DecoderClusterRunnerConf(RunnerConf):
     name: Runner = Runner.DECODER_CLUSTER
     mode: RunnerMode = RunnerMode.INFER
-    cluster_method: str = "kmeans"
+    cluster_method: str = "hdbscan"
     n_clusters: int = 32
     max_steps: int = n_clusters + 1
 
@@ -85,7 +85,7 @@ def register_decoder_cluster():
                 ),
                 evaluator=EvaluatorConf(name=ev),
                 feature=DecoderClusterFeatureConf(),
-                sae=DecoderClusterVariantConf(),
+                sae=DecoderClusterSAEVariantConf(),
                 experiment=ExperimentConf(name=f"decodercluster_gdino_{ds_name}"),
             ),
         )

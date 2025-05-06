@@ -108,20 +108,24 @@ class KnockOffRedAttnWtRunner(SAERunner):
 
         return f"layer_({layerids}).({patterns}).({subpatns})"
 
-    def build_saes_model(self, conf) -> nn.Module:
-        store_meta = FeatureDataset(
-            conf,
-            conf.dataset.train,
-            self._prepare_model_for_store(conf),
-            filter_scheme=self.prepare_filter_scheme(conf),
+    @lru_cache()
+    def prepare_metadata(self) -> Dict[str, Any]:
+        return FeatureDataset(
+            self.conf,
+            self.conf.dataset.infer,
+            self.conf.model.name,
+            filter_scheme=self.prepare_filter_scheme(),
         ).infer_feature_meta()
 
+    def build_saes_model(self, conf) -> nn.Module:
+        metadata = self.prepare_metadata()
+
         assert (
-            "feature_dim_per_name" in store_meta
+            "feature_dim_per_name" in metadata
         ), "Feature dims not found in store meta."
 
         return create_ddp_model(
-            GroupedSAE(conf, store_meta["feature_dim_per_name"]).to(self.device),
+            GroupedSAE(conf, metadata["feature_dim_per_name"]).to(self.device),
             broadcast_buffers=False,
         )
 
@@ -268,6 +272,13 @@ class KnockOffRedAttnWtRunner(SAERunner):
         records_patcher["metrics"] = records_patcher | test_patcher
         return records_patcher
 
+    def test(self) -> Dict[str, Any]:
+        records_test_dict = {}
+        if self.step % self.eval_period == 0 or self.conf.runner.mode == "test":
+            dataloader, model, evaluator = self.initialize_test_attrs()
+            records_test_dict = inference_on_dataset(model, dataloader, evaluator)
+        return records_test_dict
+    
     def infer(self) -> Dict[str, Any]:
         self.vanilla_sae_model = self.initialize_infer_attrs()
         records_cluster = self.sae_decoder_column_rank()
