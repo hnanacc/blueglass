@@ -33,3 +33,4 @@ scikit-learn
 hdbscan
 umap-learn
 uuid
+polars
