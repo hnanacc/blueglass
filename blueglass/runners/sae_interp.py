@@ -8,12 +8,14 @@ import shutil
 from functools import lru_cache
 import torch
 from torch import nn
-from blueglass.configs import BLUEGLASSConf
+from blueglass.configs import BLUEGLASSConf, Model
 from blueglass.runners import Runner
 from blueglass.utils.logger_utils import setup_blueglass_logger
+from blueglass.configs import BLUEGLASSConf, FeaturePattern
 from blueglass.features import build_feature_dataloader, FeatureDataset
 from blueglass.modeling.saes import GroupedSAE
 from blueglass.interpret import Interpreter, DatasetAttribution
+from blueglass.configs.utils import load_blueglass_from_wandb
 
 from IPython import embed
 
@@ -30,8 +32,12 @@ class InterpretationRunner(Runner):
         super().__init__(conf)
         self.device = DEVICE
         self.conf = conf
+        assert conf.sae.config_path is not None, "Require sae conf path."
+        self.sae_conf = load_blueglass_from_wandb(
+            conf.sae.config_path, original_config=self.conf
+        )
         self.save_path = self.prepare_save_path(conf)
-        self.interp_per_name = self.build_interpreters(conf, self.save_path)
+        self.interp_per_name = self.build_interpreters(self.sae_conf, self.save_path)
 
     def prepare_save_path(self, conf: BLUEGLASSConf):
         path = osp.join(conf.experiment.output_dir, "interp")
@@ -46,13 +52,30 @@ class InterpretationRunner(Runner):
             p.requires_grad = False
         return model.eval()
 
+    def prepare_filter_scheme(
+        self, conf: BLUEGLASSConf, remove_io: bool = True
+    ) -> str:
+        patterns = conf.feature.patterns
+        if remove_io and FeaturePattern.IO in patterns:
+            patterns.remove(FeaturePattern.IO)
+        patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
+
+        subpatns = conf.feature.sub_patterns
+        subpatns = "|".join(subpatns) if len(subpatns) > 0 else r"\w+"
+
+        layerids = conf.feature.layer_ids
+        layerids = [str(li) for li in layerids]
+        layerids = "|".join(layerids) if len(layerids) > 0 else r"\d+"
+
+        return f"layer_({layerids}).({patterns}).({subpatns})"
+    
     def build_infer_dataloader(self, conf):
         return build_feature_dataloader(
             conf,
             conf.dataset.infer,
             conf.model.name,
             "test",
-            self.prepare_filter_scheme(),
+            self.prepare_filter_scheme(self.sae_conf),
         )
 
     @lru_cache()
@@ -61,7 +84,7 @@ class InterpretationRunner(Runner):
             self.conf,
             self.conf.dataset.infer,
             self.conf.model.name,
-            filter_scheme=self.prepare_filter_scheme(),
+            filter_scheme=self.prepare_filter_scheme(self.sae_conf),
         ).infer_feature_meta()
 
     def build_interpreters(
@@ -73,23 +96,47 @@ class InterpretationRunner(Runner):
             for name, feature_dim in metadata["feature_dim_per_name"].items()
         }
 
-    def build_model(self, conf) -> nn.Module:
-        metadata = self.prepare_metadata()
+    def build_saes_model(self) -> nn.Module:
+        """"
+        Loads the SAEs from the different checkpoints and creates a model for infer/test mode while overriding the 
+        blueglass config with the wandb config.
+        The wandb config is used to load the correct model and the correct feature patterns.
+        """
 
-        assert (
-            conf.model.checkpoint_path is not None
-        ), "Expected model checkopint for SAE."
+        filters = ["decoder_mlp"]
+        filters  = []
+        patterns = self.sae_conf.feature.patterns
+        self.sae_conf.feature.patterns = [
+            p for p in patterns if any(f in p.value for f in filters)
+        ]
+        
+        metadata = FeatureDataset(
+            self.sae_conf,
+            self.sae_conf.dataset.infer,
+            self.sae_conf.model.name,
+            filter_scheme=self.prepare_filter_scheme(self.sae_conf),
+        ).infer_feature_meta()
 
         assert (
             "feature_dim_per_name" in metadata
-        ), "Feature dims not found in store metadata."
+        ), "Feature dims not found in store meta."
 
-        model = GroupedSAE(conf, metadata["feature_dim_per_name"])
+        m = GroupedSAE(self.sae_conf, metadata["feature_dim_per_name"]).to(self.device)
+        assert self.conf.sae.checkpoint_path is not None, "Require SAE checkpoint."
         ckpt = torch.load(
-            conf.model.checkpoint_path, map_location="cpu", weights_only=False
+            self.conf.sae.checkpoint_path, map_location="cpu", weights_only=False
         )
-        model.load_state_dict(ckpt["model"], strict=False)
-
+        missing_keys, unexpected_keys = m.load_state_dict(ckpt["model"], strict=False)
+        if len(missing_keys) > 0 or len(unexpected_keys) > 0:
+            logger.warning(
+                f"Missing keys in state_dict: {missing_keys}. "
+                f"Unexpected keys in state_dict: {unexpected_keys}."
+            )
+        return m
+    
+    def build_model(self, conf) -> nn.Module:
+        
+        model = self.build_saes_model()
         return model.eval().to(self.device)
 
     def run_step(self, batched_inputs_per_name: Dict[str, Any]):

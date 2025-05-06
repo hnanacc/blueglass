@@ -60,6 +60,9 @@ class KnockOffRedAttnWtRunner(SAERunner):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__(conf)
         self.conf = conf
+        self.sae_conf = load_blueglass_from_wandb(
+            conf.sae.config_path, original_config=self.conf
+        )
         self.runner_name = str(self.conf.runner.name)
         self.runner_model_name = str(self.conf.model.name)
 
@@ -93,7 +96,7 @@ class KnockOffRedAttnWtRunner(SAERunner):
         )
 
     def prepare_filter_scheme(
-        self, conf: BlockingIOError, remove_io: bool = True
+        self, conf: BLUEGLASSConf, remove_io: bool = True
     ) -> str:
         patterns = conf.feature.patterns
         if remove_io and FeaturePattern.IO in patterns:
@@ -108,33 +111,47 @@ class KnockOffRedAttnWtRunner(SAERunner):
         layerids = "|".join(layerids) if len(layerids) > 0 else r"\d+"
 
         return f"layer_({layerids}).({patterns}).({subpatns})"
-    
-    @lru_cache()
-    def prepare_metadata(self) -> Dict[str, Any]:
-        return FeatureDataset(
-            self.conf,
-            self.conf.dataset.infer,
-            self.conf.model.name,
-            filter_scheme=self.prepare_filter_scheme(),
-        ).infer_feature_meta()
 
-    def build_saes_model(self, conf) -> nn.Module:
+    def build_saes_model(self) -> nn.Module:
+        """"
+        Loads the SAEs from the different checkpoints and creates a model for infer/test mode while overriding the 
+        blueglass config with the wandb config.
+        The wandb config is used to load the correct model and the correct feature patterns.
+        """
+
+        filters = ["decoder_mlp"]
+        patterns = self.sae_conf.feature.patterns
+        self.sae_conf.feature.patterns = [
+            p for p in patterns if any(f in p.value for f in filters)
+        ]
+        
         metadata = FeatureDataset(
-            conf,
-            conf.dataset.infer,
-            self._prepare_model_for_store(conf),
-            filter_scheme=self.prepare_filter_scheme(conf),
+            self.sae_conf,
+            self.sae_conf.dataset.infer,
+            self._prepare_model_for_store(self.sae_conf),
+            filter_scheme=self.prepare_filter_scheme(self.sae_conf),
         ).infer_feature_meta()
 
         assert (
             "feature_dim_per_name" in metadata
         ), "Feature dims not found in store meta."
 
-        return create_ddp_model(
-            GroupedSAE(conf, metadata["feature_dim_per_name"]).to(self.device),
+        m = create_ddp_model(
+            GroupedSAE(self.sae_conf, metadata["feature_dim_per_name"]).to(self.device),
             broadcast_buffers=False,
         )
-
+        
+        ckpt = torch.load(
+            self.conf.sae.checkpoint_path, map_location="cpu", weights_only=False
+        )
+        missing_keys, unexpected_keys = m.load_state_dict(ckpt["model"], strict=False)
+        if len(missing_keys) > 0 or len(unexpected_keys) > 0:
+            logger.warning(
+                f"Missing keys in state_dict: {missing_keys}. "
+                f"Unexpected keys in state_dict: {unexpected_keys}."
+            )
+        return m
+    
     def process_records(
         self, gathered_records: List[Dict[str, Any]]
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -221,25 +238,7 @@ class KnockOffRedAttnWtRunner(SAERunner):
         """
         Initialize the model for inference.
         """
-        config = load_blueglass_from_wandb(
-            self.conf.sae.config_path, original_config=self.conf
-        )
-        filters = ["decoder_mlp"]
-        patterns = config.feature.patterns
-        config.feature.patterns = [
-            p for p in patterns if any(f in p.value for f in filters)
-        ]
-
-        m = self.build_saes_model(config)
-        ckpt = torch.load(
-            self.conf.sae.checkpoint_path, map_location="cpu", weights_only=False
-        )
-        missing_keys, unexpected_keys = m.load_state_dict(ckpt["model"], strict=False)
-        if len(missing_keys) > 0 or len(unexpected_keys) > 0:
-            logger.warning(
-                f"Missing keys in state_dict: {missing_keys}. "
-                f"Unexpected keys in state_dict: {unexpected_keys}."
-            )
+        m = self.build_saes_model()
         m.eval()
 
         d = self.build_infer_dataloader(self.conf)

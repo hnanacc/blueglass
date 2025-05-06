@@ -256,7 +256,6 @@ class FeatureDataset(IterableDataset):
 
         num_records = set(meta["num_records_per_name"].values())
         assert len(num_records) == 1, "Num records vary per name."
-        logger.warning(f"DEBUG: {meta['num_records_per_name'].values()}")
 
         return math.ceil(num_records.pop() / self.batch_size)
 
