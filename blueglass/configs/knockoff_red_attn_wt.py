@@ -5,6 +5,7 @@ import os
 import os.path as osp
 from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
+from typing import Optional, List
 
 from blueglass.configs import *
 
@@ -18,21 +19,19 @@ knockoff_config = {0: True, 1: True, 2: True, 3: True, 4: True, 5: True}
 class LayerknockoffExpConfig(LayerKnockoffExpConf):
     top_irrelevant_idx=top_irrelevant_idx,
     knockoff_config=knockoff_config,
-    irrelevant_idx_dir=None,
-
-
+    irrelevant_idx_dir=None
+    knockoff_range=[[0, 25], [0, 50], [0, 75], [0, 90], [0, 100], [100, 90], [100, 75], [100, 50], [100, 25]]
 
 @dataclass
-class LayerKnockoffSAEVariantConf(SAEConf):
+class SAEVariantConf(SAEConf):
     variant: SAEVariant = SAEVariant.TOPK_FAST
     topk: int = 32
-    config_path=(
-        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128.json"
-    ),
-    checkpoint_path=(
-        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128_4000.pth"  #
-    )
+    config_path: str="/home/squtub/github_repos/blueglass/trained_saes/config_EF128_lr4e4_L5_model_20000.json"
+    checkpoint_path: str="/home/squtub/github_repos/blueglass/trained_saes/lr4e4_L5_model_20000.pth"
 
+@dataclass
+class SAEFeatureConf(FeatureConf):
+    path: Optional[str] = FEATURE_DIR
 
 @dataclass
 class ModelstoreDatasetConf(DatasetConf):
@@ -59,9 +58,10 @@ def register_layerknockoff():
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
                 ),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
-                sae=LayerKnockoffSAEVariantConf(),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_yolo_{ds_name}"),
-                layer_knock_off=LayerknockoffExpConfig,
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
@@ -82,11 +82,12 @@ def register_layerknockoff():
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
-                sae=LayerKnockoffSAEVariantConf(),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
                 experiment=ExperimentConf(
                     name=f"knockoff_red_attn_wt_dinodetr_{ds_name}"
                 ),
-                layer_knock_off=LayerknockoffExpConfig,
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
@@ -107,9 +108,10 @@ def register_layerknockoff():
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
-                sae=LayerKnockoffSAEVariantConf(),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_detr_{ds_name}"),
-                layer_knock_off=LayerknockoffExpConfig,
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
@@ -132,9 +134,10 @@ def register_layerknockoff():
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
-                sae=LayerKnockoffSAEVariantConf(),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_gdino_{ds_name}"),
-                layer_knock_off=LayerknockoffExpConfig,
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
@@ -161,7 +164,8 @@ def register_layerknockoff():
                     ),
                 ),
                 evaluator=LabelMatchEvaluatorConf(name=ev, num_topk_matches=3),
-                sae=LayerKnockoffSAEVariantConf(),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_genu_{ds_name}"),
             ),
         )
@@ -173,7 +177,8 @@ def register_layerknockoff():
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
-                sae=LayerKnockoffSAEVariantConf(),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
                 experiment=ExperimentConf(
                     name=f"knockoff_red_attn_wt_florence_{ds_name}"
                 ),
@@ -190,7 +195,8 @@ def register_layerknockoff():
                     api_key=os.getenv("GEMINI_KEY", None),
                 ),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
-                sae=LayerKnockoffSAEVariantConf(),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
                 experiment=ExperimentConf(
                     name=f"knockoff_red_attn_wt_gemini_{ds_name}"
                 ),

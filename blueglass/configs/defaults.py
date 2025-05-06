@@ -149,6 +149,7 @@ class LayerKnockoffExpConf:
     top_irrelevant_idx: Optional[dict] = None
     knockoff_config: Optional[dict] = None
     irrelevant_idx_dir: Optional[str] = None
+    knockoff_range: Optional[List[List[int]]] = None
 
 
 @dataclass

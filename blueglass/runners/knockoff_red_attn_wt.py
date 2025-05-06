@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans, DBSCAN
 import hdbscan
 import umap.umap_ as umap
+from sklearn.manifold import TSNE
 import torch
 from torch import nn, optim, Tensor
 from torch.utils.data import DataLoader
@@ -107,7 +108,7 @@ class KnockOffRedAttnWtRunner(SAERunner):
         layerids = "|".join(layerids) if len(layerids) > 0 else r"\d+"
 
         return f"layer_({layerids}).({patterns}).({subpatns})"
-
+    
     @lru_cache()
     def prepare_metadata(self) -> Dict[str, Any]:
         return FeatureDataset(
@@ -118,7 +119,12 @@ class KnockOffRedAttnWtRunner(SAERunner):
         ).infer_feature_meta()
 
     def build_saes_model(self, conf) -> nn.Module:
-        metadata = self.prepare_metadata()
+        metadata = FeatureDataset(
+            conf,
+            conf.dataset.infer,
+            self._prepare_model_for_store(conf),
+            filter_scheme=self.prepare_filter_scheme(conf),
+        ).infer_feature_meta()
 
         assert (
             "feature_dim_per_name" in metadata
@@ -236,7 +242,9 @@ class KnockOffRedAttnWtRunner(SAERunner):
             )
         m.eval()
 
-        return m
+        d = self.build_infer_dataloader(self.conf)
+        fm = self.feature_model
+        return d ,m, fm
 
     def run_step(self) -> Dict[str, Any]:
         """
@@ -280,20 +288,24 @@ class KnockOffRedAttnWtRunner(SAERunner):
         return records_test_dict
     
     def infer(self) -> Dict[str, Any]:
-        self.vanilla_sae_model = self.initialize_infer_attrs()
+        self.dataloader, self.vanilla_sae_model, self.vanilla_feature_model = self.initialize_infer_attrs()
         records_cluster = self.sae_decoder_column_rank()
 
-        for self.step in range(1, self.max_steps + 1):
+        for self.step, data in enumerate(self.dataloader):
             records_dict = self.run_step()
 
-            if self.step % self.logs_period == 0:
-                self.register_metrics(records_dict)
+            self.register_metrics(records_dict)
 
             del records_dict
             torch.cuda.empty_cache()
             gc.collect()
-
+            if self.step % self.logs_period == 0:
+                logger.info(f"Processed {self.step} / {len(self.dataloader)}")
+                
     def register_metrics(self, records_dict: Dict[str, Any]):
+        if self.step % self.logs_period != 0:
+            return None
+        
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
@@ -361,9 +373,9 @@ class KnockOffRedAttnWtRunner(SAERunner):
             self.conf.experiment.output_dir, "sae_decoder_column_rank"
         )
         os.makedirs(save_file, exist_ok=True)
-
+        
         for name, sae in model.eval().sae_per_name.items():
-            fig, _cluster_indices = self.analyze_decoder_clusters(
+            fig, _cluster_indices = self.build_sae_column_ranks(
                 sae,
                 save_path=f"{save_file}/{name}_map.pdf",
                 n_clusters=self.conf.runner.n_clusters,
@@ -376,11 +388,11 @@ class KnockOffRedAttnWtRunner(SAERunner):
 
         return records
 
-    def analyze_decoder_clusters(
+    def build_sae_column_ranks(
         self,
         sae: nn.Module,
         save_path: str = None,
-        clustering: str = "kmeans",
+        redn_method: str = "umap",
         n_clusters: int = 10,
         random_state: int = 42,
         dbscan_eps: float = 0.5,
@@ -401,9 +413,16 @@ class KnockOffRedAttnWtRunner(SAERunner):
             A matplotlib figure suitable for logging with wandb.Image().
         """
         decoder_weights = sae.decoder.detach().cpu().numpy()  # [N, D]
-        reducer = umap.UMAP(n_components=2, random_state=random_state, n_jobs=1)
-        umap_proj = reducer.fit_transform(decoder_weights)
-        del reducer
+        
+        if redn_method.lower() == "umap":
+            reducer = umap.UMAP(n_components=2, random_state=random_state, n_jobs=1)
+            proj = reducer.fit_transform(decoder_weights)
+            del reducer
+        if redn_method.lower() == "umap":
+            reducer = TSNE(n_components=2, random_state=random_state)
+            proj = reducer.fit_transform(decoder_weights)
+            del reducer
+
         # Clustering
         if clustering == "kmeans":
             clusterer = KMeans(n_clusters=n_clusters, random_state=random_state)
@@ -431,7 +450,7 @@ class KnockOffRedAttnWtRunner(SAERunner):
         # Plot
         fig, ax = plt.subplots(figsize=(10, 8))
         scatter = ax.scatter(
-            umap_proj[:, 0], umap_proj[:, 1], c=labels, cmap="tab10", s=3
+            proj[:, 0], umap_proj[:, 1], c=labels, cmap="tab10", s=3
         )
         ax.set_title(f"SAE Decoder Cluster Map ({clustering})")
         ax.set_xlabel("UMAP-1")

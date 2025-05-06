@@ -109,15 +109,15 @@ class DecoderClusterRunner(SAERunner):
         return f"layer_({layerids}).({patterns}).({subpatns})"
 
     def build_saes_model(self, conf) -> nn.Module:
-        store_meta = FeatureDataset(
+        metadata = FeatureDataset(
             conf,
-            conf.dataset.train,
+            conf.dataset.infer,
             self._prepare_model_for_store(conf),
             filter_scheme=self.prepare_filter_scheme(conf),
         ).infer_feature_meta()
 
         assert (
-            "feature_dim_per_name" in store_meta
+            "feature_dim_per_name" in metadata
         ), "Feature dims not found in store meta."
 
         return create_ddp_model(
