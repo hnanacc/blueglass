@@ -24,7 +24,11 @@ REMOTE = "IntelLabs/BlueLens"
 
 @lru_cache
 def LIST_REPO_FILES():
-    remote_names = list_repo_files(REMOTE, repo_type="dataset")
+    remote_names = []
+    try:
+        remote_names = list_repo_files(REMOTE, repo_type="dataset")
+    except Exception as e:
+        logger.warning("Hugging Face Hub is not reachable.")
     return remote_names
 
 
