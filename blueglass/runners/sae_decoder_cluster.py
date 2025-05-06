@@ -59,6 +59,9 @@ class DecoderClusterRunner(SAERunner):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__(conf)
         self.conf = conf
+        self.sae_conf = load_blueglass_from_wandb(
+            conf.sae.config_path, original_config=self.conf
+        )
         self.runner_name = str(self.conf.runner.name)
         self.runner_model_name = str(self.conf.model.name)
 
@@ -89,40 +92,6 @@ class DecoderClusterRunner(SAERunner):
     def build_infer_dataloader(self, conf: BLUEGLASSConf) -> DataLoader:
         return build_test_dataloader(
             conf.dataset.test, conf.dataset.batch_size, conf.num_data_workers
-        )
-
-    def prepare_filter_scheme(
-        self, conf: BlockingIOError, remove_io: bool = True
-    ) -> str:
-        patterns = conf.feature.patterns
-        if remove_io and FeaturePattern.IO in patterns:
-            patterns.remove(FeaturePattern.IO)
-        patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
-
-        subpatns = conf.feature.sub_patterns
-        subpatns = "|".join(subpatns) if len(subpatns) > 0 else r"\w+"
-
-        layerids = conf.feature.layer_ids
-        layerids = [str(li) for li in layerids]
-        layerids = "|".join(layerids) if len(layerids) > 0 else r"\d+"
-
-        return f"layer_({layerids}).({patterns}).({subpatns})"
-
-    def build_saes_model(self, conf) -> nn.Module:
-        metadata = FeatureDataset(
-            conf,
-            conf.dataset.infer,
-            self._prepare_model_for_store(conf),
-            filter_scheme=self.prepare_filter_scheme(conf),
-        ).infer_feature_meta()
-
-        assert (
-            "feature_dim_per_name" in metadata
-        ), "Feature dims not found in store meta."
-
-        return create_ddp_model(
-            GroupedSAE(conf, store_meta["feature_dim_per_name"]).to(self.device),
-            broadcast_buffers=False,
         )
 
     def process_records(
@@ -207,20 +176,36 @@ class DecoderClusterRunner(SAERunner):
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 
-    def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module, DatasetEvaluator]:
+    def prepare_metadata(self, conf: BLUEGLASSConf) -> Dict[str, Any]:
+        return FeatureDataset(
+            conf,
+            conf.dataset.infer,
+            conf.model.name,
+            filter_scheme=self.prepare_filter_scheme(self.sae_conf),
+        ).infer_feature_meta()
+
+    def build_saes_model(self) -> nn.Module:
+        """"
+        Loads the SAEs from the different checkpoints and creates a model for infer/test mode while overriding the 
+        blueglass config with the wandb config.
+        The wandb config is used to load the correct model and the correct feature patterns.
         """
-        Initialize the model for inference.
-        """
-        config = load_blueglass_from_wandb(
-            self.conf.sae.config_path, original_config=self.conf
-        )
+
         filters = ["decoder_mlp"]
-        patterns = config.feature.patterns
-        config.feature.patterns = [
+        filters  = []
+        patterns = self.sae_conf.feature.patterns
+        self.sae_conf.feature.patterns = [
             p for p in patterns if any(f in p.value for f in filters)
         ]
+        
+        metadata = self.prepare_metadata(self.sae_conf)
 
-        m = self.build_saes_model(config)
+        assert (
+            "feature_dim_per_name" in metadata
+        ), "Feature dims not found in store meta."
+
+        m = GroupedSAE(self.sae_conf, metadata["feature_dim_per_name"]).to(self.device)
+        assert self.conf.sae.checkpoint_path is not None, "Require SAE checkpoint."
         ckpt = torch.load(
             self.conf.sae.checkpoint_path, map_location="cpu", weights_only=False
         )
@@ -230,9 +215,17 @@ class DecoderClusterRunner(SAERunner):
                 f"Missing keys in state_dict: {missing_keys}. "
                 f"Unexpected keys in state_dict: {unexpected_keys}."
             )
-        m.eval()
-
         return m
+    
+    def build_model(self, conf) -> nn.Module:
+        
+        model = self.build_saes_model()
+        return model.eval().to(self.device)
+    
+    def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
+        d = self.build_infer_dataloader(self.conf)
+        m = self.build_model(self.conf)
+        return d, m
 
     def run_step(self) -> Dict[str, Any]:
         """
@@ -271,7 +264,7 @@ class DecoderClusterRunner(SAERunner):
         return records_patcher
 
     def infer(self) -> Dict[str, Any]:
-        self.vanilla_sae_model = self.initialize_infer_attrs()
+        self.dataloader, self.vanilla_sae_model = self.initialize_infer_attrs()
 
         for self.step in range(1, self.max_steps + 1):
             records_dict = self.run_step()

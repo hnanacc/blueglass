@@ -65,6 +65,7 @@ class StorageStream(FeatureStream):
     def mapper(self, batch_per_name: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         return self.source.format(batch_per_name)
 
+    @lru_cache
     def infer_feature_meta(self) -> Dict[str, Any]:
         logger.debug(f"fetching feature meta data.")
         meta = self.source.infer_storage_meta()
@@ -262,6 +263,7 @@ class FeatureDataset(IterableDataset):
     def mapper(self, batch_per_name: Dict[str, Any]):
         return self.stream.mapper(batch_per_name)
 
+    @lru_cache
     def infer_feature_meta(self) -> Dict[str, Any]:
         """
         Returns a dict of layer names and feature dimensions.

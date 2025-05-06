@@ -51,23 +51,6 @@ class InterpretationRunner(Runner):
         for p in model.parameters():
             p.requires_grad = False
         return model.eval()
-
-    def prepare_filter_scheme(
-        self, conf: BLUEGLASSConf, remove_io: bool = True
-    ) -> str:
-        patterns = conf.feature.patterns
-        if remove_io and FeaturePattern.IO in patterns:
-            patterns.remove(FeaturePattern.IO)
-        patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
-
-        subpatns = conf.feature.sub_patterns
-        subpatns = "|".join(subpatns) if len(subpatns) > 0 else r"\w+"
-
-        layerids = conf.feature.layer_ids
-        layerids = [str(li) for li in layerids]
-        layerids = "|".join(layerids) if len(layerids) > 0 else r"\d+"
-
-        return f"layer_({layerids}).({patterns}).({subpatns})"
     
     def build_infer_dataloader(self, conf):
         return build_feature_dataloader(
@@ -79,18 +62,18 @@ class InterpretationRunner(Runner):
         )
 
     @lru_cache()
-    def prepare_metadata(self) -> Dict[str, Any]:
+    def prepare_metadata(self, conf: BLUEGLASSConf) -> Dict[str, Any]:
         return FeatureDataset(
-            self.conf,
-            self.conf.dataset.infer,
-            self.conf.model.name,
+            conf,
+            conf.dataset.infer,
+            conf.model.name,
             filter_scheme=self.prepare_filter_scheme(self.sae_conf),
         ).infer_feature_meta()
 
     def build_interpreters(
         self, conf: BLUEGLASSConf, save_path: str
     ) -> Dict[str, Interpreter]:
-        metadata = self.prepare_metadata()
+        metadata = self.prepare_metadata(self.sae_conf)
         return {
             name: DatasetAttribution(conf, feature_dim, osp.join(save_path, name))
             for name, feature_dim in metadata["feature_dim_per_name"].items()
@@ -102,20 +85,8 @@ class InterpretationRunner(Runner):
         blueglass config with the wandb config.
         The wandb config is used to load the correct model and the correct feature patterns.
         """
-
-        filters = ["decoder_mlp"]
-        filters  = []
-        patterns = self.sae_conf.feature.patterns
-        self.sae_conf.feature.patterns = [
-            p for p in patterns if any(f in p.value for f in filters)
-        ]
-        
-        metadata = FeatureDataset(
-            self.sae_conf,
-            self.sae_conf.dataset.infer,
-            self.sae_conf.model.name,
-            filter_scheme=self.prepare_filter_scheme(self.sae_conf),
-        ).infer_feature_meta()
+              
+        metadata = self.prepare_metadata(self.sae_conf)
 
         assert (
             "feature_dim_per_name" in metadata

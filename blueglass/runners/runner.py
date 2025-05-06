@@ -137,17 +137,16 @@ class Runner:
     def build_model(self, conf: BLUEGLASSConf) -> nn.Module:
         return create_ddp_model(build_model(conf))
 
-    @lru_cache
-    def prepare_filter_scheme(self, remove_io: bool = True) -> str:
-        patterns = self.conf.feature.patterns.copy()
+    def prepare_filter_scheme(self, conf:BLUEGLASSConf, remove_io: bool = True) -> str:
+        patterns = conf.feature.patterns.copy()
         if remove_io:
             patterns.remove(FeaturePattern.IO)
         patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
 
-        subpatns = self.conf.feature.sub_patterns
+        subpatns = conf.feature.sub_patterns
         subpatns = "|".join(subpatns) if len(subpatns) > 0 else r"\w+"
 
-        layerids = self.conf.feature.layer_ids
+        layerids = conf.feature.layer_ids
         layerids = [str(li) for li in layerids]
         layerids = "|".join(layerids) if len(layerids) > 0 else r"\d+"
 

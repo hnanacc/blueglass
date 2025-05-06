@@ -94,23 +94,14 @@ class KnockOffRedAttnWtRunner(SAERunner):
         return build_test_dataloader(
             conf.dataset.test, conf.dataset.batch_size, conf.num_data_workers
         )
-
-    def prepare_filter_scheme(
-        self, conf: BLUEGLASSConf, remove_io: bool = True
-    ) -> str:
-        patterns = conf.feature.patterns
-        if remove_io and FeaturePattern.IO in patterns:
-            patterns.remove(FeaturePattern.IO)
-        patterns = "|".join(patterns) if len(patterns) > 0 else r"\w+"
-
-        subpatns = conf.feature.sub_patterns
-        subpatns = "|".join(subpatns) if len(subpatns) > 0 else r"\w+"
-
-        layerids = conf.feature.layer_ids
-        layerids = [str(li) for li in layerids]
-        layerids = "|".join(layerids) if len(layerids) > 0 else r"\d+"
-
-        return f"layer_({layerids}).({patterns}).({subpatns})"
+    
+    def prepare_metadata(self, conf: BLUEGLASSConf) -> Dict[str, Any]:
+        return FeatureDataset(
+            conf,
+            conf.dataset.infer,
+            conf.model.name,
+            filter_scheme=self.prepare_filter_scheme(self.sae_conf),
+        ).infer_feature_meta()
 
     def build_saes_model(self) -> nn.Module:
         """"
@@ -120,27 +111,20 @@ class KnockOffRedAttnWtRunner(SAERunner):
         """
 
         filters = ["decoder_mlp"]
+        filters  = []
         patterns = self.sae_conf.feature.patterns
         self.sae_conf.feature.patterns = [
             p for p in patterns if any(f in p.value for f in filters)
         ]
         
-        metadata = FeatureDataset(
-            self.sae_conf,
-            self.sae_conf.dataset.infer,
-            self._prepare_model_for_store(self.sae_conf),
-            filter_scheme=self.prepare_filter_scheme(self.sae_conf),
-        ).infer_feature_meta()
+        metadata = self.prepare_metadata(self.sae_conf)
 
         assert (
             "feature_dim_per_name" in metadata
         ), "Feature dims not found in store meta."
 
-        m = create_ddp_model(
-            GroupedSAE(self.sae_conf, metadata["feature_dim_per_name"]).to(self.device),
-            broadcast_buffers=False,
-        )
-        
+        m = GroupedSAE(self.sae_conf, metadata["feature_dim_per_name"]).to(self.device)
+        assert self.conf.sae.checkpoint_path is not None, "Require SAE checkpoint."
         ckpt = torch.load(
             self.conf.sae.checkpoint_path, map_location="cpu", weights_only=False
         )
@@ -151,7 +135,7 @@ class KnockOffRedAttnWtRunner(SAERunner):
                 f"Unexpected keys in state_dict: {unexpected_keys}."
             )
         return m
-    
+
     def process_records(
         self, gathered_records: List[Dict[str, Any]]
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -234,14 +218,9 @@ class KnockOffRedAttnWtRunner(SAERunner):
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 
-    def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module, DatasetEvaluator]:
-        """
-        Initialize the model for inference.
-        """
-        m = self.build_saes_model()
-        m.eval()
-
+    def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
         d = self.build_infer_dataloader(self.conf)
+        m = self.build_model(self.conf)
         fm = self.feature_model
         return d ,m, fm
 
@@ -392,11 +371,7 @@ class KnockOffRedAttnWtRunner(SAERunner):
         sae: nn.Module,
         save_path: str = None,
         redn_method: str = "umap",
-        n_clusters: int = 10,
         random_state: int = 42,
-        dbscan_eps: float = 0.5,
-        hdbscan_min_cluster_size: int = 50,
-        min_samples: int = 5,
     ) -> plt.Figure:
         """
         Projects decoder weights using UMAP and clusters them for visualization.
@@ -422,19 +397,6 @@ class KnockOffRedAttnWtRunner(SAERunner):
             proj = reducer.fit_transform(decoder_weights)
             del reducer
 
-        # Clustering
-        if clustering == "kmeans":
-            clusterer = KMeans(n_clusters=n_clusters, random_state=random_state)
-            labels = clusterer.fit_predict(umap_proj)
-        elif clustering == "dbscan":
-            clusterer = DBSCAN(eps=dbscan_eps, min_samples=min_samples)
-            labels = clusterer.fit_predict(umap_proj)
-        elif clustering == "hdbscan":
-            clusterer = hdbscan.HDBSCAN(min_cluster_size=hdbscan_min_cluster_size)
-            labels = clusterer.fit_predict(umap_proj)
-        else:
-            raise ValueError(f"Unknown clustering: {clustering}")
-
         # Map cluster_id -> row indices
         cluster_indices: Dict[int, List[int]] = {}
         for idx, label in enumerate(labels):
@@ -449,11 +411,11 @@ class KnockOffRedAttnWtRunner(SAERunner):
         # Plot
         fig, ax = plt.subplots(figsize=(10, 8))
         scatter = ax.scatter(
-            proj[:, 0], umap_proj[:, 1], c=labels, cmap="tab10", s=3
+            proj[:, 0], proj[:, 1], cmap="tab10", s=3
         )
         ax.set_title(f"SAE Decoder Cluster Map ({clustering})")
-        ax.set_xlabel("UMAP-1")
-        ax.set_ylabel("UMAP-2")
+        ax.set_xlabel(f"{redn_method.upper()}-1")
+        ax.set_ylabel(f"{redn_method.upper()}-2")
         plt.colorbar(scatter, ax=ax, label="Cluster")
         plt.tight_layout()
 

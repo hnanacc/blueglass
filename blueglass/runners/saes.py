@@ -70,7 +70,7 @@ class SAERunner(Runner):
             conf.dataset.train,
             self._prepare_model_for_store(conf),
             "train",
-            self.prepare_filter_scheme(),
+            self.prepare_filter_scheme(conf),
             num_workers=self.conf.num_data_workers,
         )
 
@@ -79,7 +79,7 @@ class SAERunner(Runner):
             conf,
             conf.dataset.train,
             self._prepare_model_for_store(conf),
-            filter_scheme=self.prepare_filter_scheme(),
+            filter_scheme=self.prepare_filter_scheme(conf),
         ).infer_feature_meta()
 
         assert (
@@ -263,7 +263,7 @@ class SAERunner(Runner):
                 self.conf.dataset.test,
                 fm,
                 "test",
-                self.prepare_filter_scheme(),
+                self.prepare_filter_scheme(self.conf),
             )
             fe = SAEEvaluator(self.conf, self.step)
             logger.info("Evaluation for SAE metrics.")

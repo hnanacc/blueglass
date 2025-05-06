@@ -9,9 +9,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 MAX_ROWS_PER_FILE = 500_000
-OLD_ROOT_DIR = "BlueLens/features_datasets"
-NEW_ROOT_DIR = "BlueLensPos/features_datasets"
-NEW_1_ROOT_DIR = "BlueLensPos_1/features_datasets"
+OLD_ROOT_DIR = "/scr/qutub/datasets/BlueLens/features_datasets/gdino/gdino.coco_mini"
+NEW_ROOT_DIR = "BlueLensPosMINI"
+NEW_1_ROOT_DIR = "BlueLensPosMINI_1"
 
 
 def log(msg):
@@ -203,6 +203,8 @@ def process_single_folder(args):
 
 
 def consolidate(conf, root_dir=NEW_ROOT_DIR, num_workers=8):
+    
+    root_dir = OLD_ROOT_DIR.replace("BlueLens", NEW_ROOT_DIR)
     folders = find_folders_with_parts(root_dir)
     log(f"Found {len(folders)} folders with part files.")
 
@@ -221,6 +223,6 @@ if __name__ == "__main__":
     from blueglass.configs import BLUEGLASSConf
 
     conf = BLUEGLASSConf()
-    num_workers = 75
+    num_workers = 1
     filter_and_rewrite_BlueLens(conf=conf, num_workers=num_workers)
     consolidate(conf, num_workers=num_workers)  # or 32 if you have CPUs
