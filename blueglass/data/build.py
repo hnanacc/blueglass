@@ -41,9 +41,7 @@ def build_test_dataloader(
     return DataLoader(
         dataset,
         batch_size=batch_size,
-        sampler=InferenceSampler(
-            size=len(dataset), evalaute_single_gpu=evalaute_single_gpu
-        ),
+        sampler=InferenceSampler(size=len(dataset)),
         shuffle=False,
         drop_last=False,
         collate_fn=trivial_batch_collator,

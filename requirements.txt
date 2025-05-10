@@ -33,4 +33,5 @@ scikit-learn
 hdbscan
 umap-learn
 uuid
+plotly
 polars

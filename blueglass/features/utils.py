@@ -203,7 +203,7 @@ def process_single_folder(args):
 
 
 def consolidate(conf, root_dir=NEW_ROOT_DIR, num_workers=8):
-    
+
     root_dir = OLD_ROOT_DIR.replace("BlueLens", NEW_ROOT_DIR)
     folders = find_folders_with_parts(root_dir)
     log(f"Found {len(folders)} folders with part files.")

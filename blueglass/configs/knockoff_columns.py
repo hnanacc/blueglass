@@ -3,45 +3,98 @@
 
 import os
 import os.path as osp
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hydra.core.config_store import ConfigStore
+from typing import Optional, List, Union
 
 from blueglass.configs import *
+
+"""
+top_irrelevant_idx
+"""
+top_irrelevant_idx = {0: 50, 1: 50, 2: 90, 3: 75, 4: 90, 5: 50}
+# knockoff_layer_selection = {0: True, 1: True, 2: True, 3: True, 4: True, 5: True}
+
+
+@dataclass
+class LayerknockoffExpConfig(LayerKnockoffExpConf):
+    top_irrelevant_idx: dict = field(
+        default_factory=lambda: {0: 50, 1: 50, 2: 90, 3: 75, 4: 90, 5: 50}
+    )
+    knockoff_layer_selection: dict = field(
+        default_factory=lambda: {0: True, 1: True, 2: True, 3: True, 4: True, 5: True}
+    )
+    use_all_layers: Union[bool, str] = field(default_factory=lambda: "both")
+    irrelevant_idx_dir = None
+    knockoff_range: List[List[int]] = field(
+        default_factory=lambda: [
+            [0, 10],
+            [0, 25],
+            [0, 50],
+            [0, 75],
+            [0, 90],
+            [0, 100],
+            [100, 90],
+            [100, 75],
+            [100, 50],
+            [100, 25],
+        ]
+    )
+
+
+@dataclass
+class SAEVariantConf(SAEConf):
+    variant: SAEVariant = SAEVariant.TOPK_FAST
+    topk: int = 32
+    config_path: str = (
+        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128.json"
+    )
+    checkpoint_path: str = (
+        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128_4000.pth"
+    )
+
+
+@dataclass
+class SAEFeatureConf(FeatureConf):
+    path: Optional[str] = FEATURE_DIR
 
 
 @dataclass
 class ModelstoreDatasetConf(DatasetConf):
-    test_batch_size: int = 8
+    test_batch_size: int = 32
 
 
 @dataclass
-class ModelStoreRunnerConf(RunnerConf):
-    name: Runner = Runner.MODELSTORE
-    mode: RunnerMode = RunnerMode.TEST
+class KnockoffColumns(RunnerConf):
+    name: Runner = Runner.KNOCKOFF_LAYER
+    mode: RunnerMode = RunnerMode.INFER
 
 
-def register_modelstores():
+def register_layerknockoff():
     cs = ConfigStore.instance()
 
     for ds_name, _, ds_test, ev in DATASETS_AND_EVALS:
         cs.store(
-            f"modelstore.yolo.{ds_name}",
+            f"layerknockoff.yolo.{ds_name}",
             BLUEGLASSConf(
-                runner=ModelStoreRunnerConf(),
+                runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.YOLO,
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
                 ),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
-                experiment=ExperimentConf(name=f"modelstore_yolo_{ds_name}"),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
+                experiment=ExperimentConf(name=f"knockoff_red_attn_wt_yolo_{ds_name}"),
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
         cs.store(
-            f"modelstore.mmdet_dinodetr.{ds_name}",
+            f"layerknockoff.mmdet_dinodetr.{ds_name}",
             BLUEGLASSConf(
-                runner=ModelStoreRunnerConf(),
+                runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.DINO_DETR,
@@ -55,14 +108,19 @@ def register_modelstores():
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
-                experiment=ExperimentConf(name=f"modelstore_dinodetr_{ds_name}"),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
+                experiment=ExperimentConf(
+                    name=f"knockoff_red_attn_wt_dinodetr_{ds_name}"
+                ),
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
         cs.store(
-            f"modelstore.mmdet_detr.{ds_name}",
+            f"layerknockoff.mmdet_detr.{ds_name}",
             BLUEGLASSConf(
-                runner=ModelStoreRunnerConf(),
+                runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.DETR,
@@ -76,14 +134,17 @@ def register_modelstores():
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
-                experiment=ExperimentConf(name=f"modelstore_detr_{ds_name}"),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
+                experiment=ExperimentConf(name=f"knockoff_red_attn_wt_detr_{ds_name}"),
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
         cs.store(
-            f"modelstore.gdino.{ds_name}",
+            f"layerknockoff.gdino.{ds_name}",
             BLUEGLASSConf(
-                runner=ModelStoreRunnerConf(),
+                runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GDINO,
@@ -99,14 +160,17 @@ def register_modelstores():
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
-                experiment=ExperimentConf(name=f"modelstore_gdino_{ds_name}"),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
+                experiment=ExperimentConf(name=f"knockoff_red_attn_wt_gdino_{ds_name}"),
+                layer_knock_off=LayerknockoffExpConfig(),
             ),
         )
 
         cs.store(
-            f"modelstore.genu.{ds_name}",
+            f"layerknockoff.genu.{ds_name}",
             BLUEGLASSConf(
-                runner=ModelStoreRunnerConf(),
+                runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GENU,
@@ -126,31 +190,41 @@ def register_modelstores():
                     ),
                 ),
                 evaluator=LabelMatchEvaluatorConf(name=ev, num_topk_matches=3),
-                experiment=ExperimentConf(name=f"modelstore_genu_{ds_name}"),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
+                experiment=ExperimentConf(name=f"knockoff_red_attn_wt_genu_{ds_name}"),
             ),
         )
 
         cs.store(
-            f"modelstore.florence.{ds_name}",
+            f"layerknockoff.florence.{ds_name}",
             BLUEGLASSConf(
-                runner=ModelStoreRunnerConf(),
+                runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
-                experiment=ExperimentConf(name=f"modelstore_florence_{ds_name}"),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
+                experiment=ExperimentConf(
+                    name=f"knockoff_red_attn_wt_florence_{ds_name}"
+                ),
             ),
         )
 
         cs.store(
-            f"modelstore.gemini.{ds_name}",
+            f"layerknockoff.gemini.{ds_name}",
             BLUEGLASSConf(
-                runner=ModelStoreRunnerConf(),
+                runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GEMINI,
                     api_key=os.getenv("GEMINI_KEY", None),
                 ),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
-                experiment=ExperimentConf(name=f"modelstore_gemini_{ds_name}"),
+                sae=SAEVariantConf(),
+                feature=SAEFeatureConf(),
+                experiment=ExperimentConf(
+                    name=f"knockoff_red_attn_wt_gemini_{ds_name}"
+                ),
             ),
         )

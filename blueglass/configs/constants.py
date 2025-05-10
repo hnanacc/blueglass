@@ -105,6 +105,7 @@ class Runner(str, Enum):
     SAE = "sae"
     DECODER_CLUSTER = "decoder_cluster"
     KNOCKOFF_LAYER = "knockoff_layer"
+    SAE_KNOCKOFF = "sae_knockoff"
 
 
 class FeaturePattern(str, Enum):

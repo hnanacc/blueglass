@@ -35,7 +35,8 @@ class DatasetConf:
     infer: Datasets = Datasets.COCO_MINI
     test: Datasets = Datasets.COCO_MINI
 
-    batch_size: int = 8
+    test_batch_size: int = 8
+    train_batch_size: int = 8
 
 
 @dataclass
@@ -89,8 +90,9 @@ class RunnerConf:
     max_steps: int = 100_000
     logs_period: int = 1
     eval_period: int = 200
+    eval_knockoff_period: int = 200
     patch_eval_period: int = 500
-    visuals_eval_period: int = 50
+    visuals_eval_period: int = 200
     ckpt_period: int = 200
     resume: bool = False
     save_ckpt_locally: bool = field(default=False)
@@ -147,9 +149,16 @@ class ProbeConf:
 @dataclass
 class LayerKnockoffExpConf:
     top_irrelevant_idx: Optional[dict] = None
-    knockoff_config: Optional[dict] = None
+    column_ranks: Optional[dict] = None
+    knockoff_layer_selection: Optional[dict] = None
+    use_all_layers: Union[bool, str] = "both"
+    active_use_all_layers_mode: Union[bool, str] = False
     irrelevant_idx_dir: Optional[str] = None
     knockoff_range: Optional[List[List[int]]] = None
+    redn_method: str = "tsne"
+    knockoff_feature_model: bool = False
+    active_knockoff_layer_name: Optional[str] = None
+    active_knockoff_range: Optional[List[int]] = field(default_factory=lambda: [0, 100])
 
 
 @dataclass

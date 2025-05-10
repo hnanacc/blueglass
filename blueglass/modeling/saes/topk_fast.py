@@ -266,3 +266,9 @@ class TopKFast(AutoEncoder):
     def sparse_codes(self) -> Tensor:
         decoder = self.decoder
         return decoder.data  # [N, D]
+
+    @torch.no_grad()
+    def set_knockoff_columns(self, column_indices, feature_bias=False):
+        self.decoder[:, column_indices] = 0
+        if feature_bias:
+            self.feature_bias[column_indices] = 0

@@ -185,19 +185,19 @@ class DecoderClusterRunner(SAERunner):
         ).infer_feature_meta()
 
     def build_saes_model(self) -> nn.Module:
-        """"
-        Loads the SAEs from the different checkpoints and creates a model for infer/test mode while overriding the 
+        """ "
+        Loads the SAEs from the different checkpoints and creates a model for infer/test mode while overriding the
         blueglass config with the wandb config.
         The wandb config is used to load the correct model and the correct feature patterns.
         """
 
         filters = ["decoder_mlp"]
-        filters  = []
+        filters = []
         patterns = self.sae_conf.feature.patterns
         self.sae_conf.feature.patterns = [
             p for p in patterns if any(f in p.value for f in filters)
         ]
-        
+
         metadata = self.prepare_metadata(self.sae_conf)
 
         assert (
@@ -216,12 +216,12 @@ class DecoderClusterRunner(SAERunner):
                 f"Unexpected keys in state_dict: {unexpected_keys}."
             )
         return m
-    
+
     def build_model(self, conf) -> nn.Module:
-        
+
         model = self.build_saes_model()
         return model.eval().to(self.device)
-    
+
     def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
         d = self.build_infer_dataloader(self.conf)
         m = self.build_model(self.conf)
@@ -251,13 +251,9 @@ class DecoderClusterRunner(SAERunner):
                     records_patcher[f"vanilla/{metric}_{_metric_}"] = (
                         vanilla_records_patcher[metric][_metric_]
                     )
+            self.vanilla_metrics = records_patcher
         else:
-            vanilla_records_patcher = self.vanilla_metrics
-            for metric in vanilla_records_patcher.keys():
-                for _metric_ in vanilla_records_patcher[metric].keys():
-                    records_patcher[f"vanilla/{metric}_{_metric_}"] = (
-                        vanilla_records_patcher[metric][_metric_]
-                    )
+            records_patcher.update(self.vanilla_metrics)
 
         test_patcher = self.patcher_test()
         records_patcher["metrics"] = records_patcher | test_patcher
@@ -396,7 +392,7 @@ class DecoderClusterRunner(SAERunner):
         Returns:
             A matplotlib figure suitable for logging with wandb.Image().
         """
-        decoder_weights = sae.decoder.detach().cpu().numpy()  # [N, D]
+        decoder_weights = sae.sparse_codes.cpu().numpy().T  # [N, D]
         reducer = umap.UMAP(n_components=2, random_state=random_state, n_jobs=1)
         umap_proj = reducer.fit_transform(decoder_weights)
         del reducer

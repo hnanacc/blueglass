@@ -51,7 +51,7 @@ class InterpretationRunner(Runner):
         for p in model.parameters():
             p.requires_grad = False
         return model.eval()
-    
+
     def build_infer_dataloader(self, conf):
         return build_feature_dataloader(
             conf,
@@ -80,12 +80,12 @@ class InterpretationRunner(Runner):
         }
 
     def build_saes_model(self) -> nn.Module:
-        """"
-        Loads the SAEs from the different checkpoints and creates a model for infer/test mode while overriding the 
+        """ "
+        Loads the SAEs from the different checkpoints and creates a model for infer/test mode while overriding the
         blueglass config with the wandb config.
         The wandb config is used to load the correct model and the correct feature patterns.
         """
-              
+
         metadata = self.prepare_metadata(self.sae_conf)
 
         assert (
@@ -104,9 +104,9 @@ class InterpretationRunner(Runner):
                 f"Unexpected keys in state_dict: {unexpected_keys}."
             )
         return m
-    
+
     def build_model(self, conf) -> nn.Module:
-        
+
         model = self.build_saes_model()
         return model.eval().to(self.device)
 

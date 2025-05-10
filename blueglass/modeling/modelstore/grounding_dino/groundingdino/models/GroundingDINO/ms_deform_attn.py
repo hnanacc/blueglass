@@ -28,6 +28,13 @@ from torch.autograd import Function
 from torch.autograd.function import once_differentiable
 from torch.nn.init import constant_, xavier_uniform_
 
+"""
+ADD INFORMATION ABOUT THE BLUEGLASS FEATURE USAGE HERE
+"""
+from blueglass.features import intercept_manager
+from blueglass.configs import FeaturePattern, FeatureSubPattern
+from blueglass.configs.defaults import BLUEGLASSConf
+
 try:
     from blueglass.modeling.modelstore.grounding_dino.groundingdino import _C
 except:
@@ -245,21 +252,40 @@ class MultiScaleDeformableAttention(nn.Module):
         self.attention_weights.weight.requires_grad = False
         self.attention_weights.bias.requires_grad = False
 
-    def knockoff_band(self, knockoff_band):
+    def knockoff_band(
+        self, blueglass_conf: BLUEGLASSConf, feature_pattern_selection: FeaturePattern
+    ):
         """
         Knocking off columns along the colums following the residual dimensions
         """
+        pattern = feature_pattern_selection.value
+        name = next(
+            (
+                k
+                for k in blueglass_conf.layer_knock_off.column_ranks.keys()
+                if pattern in k
+            ),
+            None,
+        )
+        start_percent, end_percent = sorted(
+            blueglass_conf.layer_knock_off.active_knockoff_range
+        )
+        columns_ranks = blueglass_conf.layer_knock_off.column_ranks[name]
+        total = len(columns_ranks)
+        start_idx = int((start_percent / 100) * total)
+        end_idx = int((end_percent / 100) * total)
+        knockoff_indices = columns_ranks[start_idx:end_idx]
         with torch.no_grad():
-            self.sampling_offsets.weight[:, knockoff_band] = 0
-            self.sampling_offsets.bias[knockoff_band] = 0
+            self.sampling_offsets.weight[:, knockoff_indices] = 0
+            self.sampling_offsets.bias[knockoff_indices] = 0
 
-            self.value_proj.weight[:, knockoff_band] = 0
-            self.value_proj.bias[knockoff_band] = 0
+            self.value_proj.weight[:, knockoff_indices] = 0
+            self.value_proj.bias[knockoff_indices] = 0
 
-            self.output_proj.weight[:, knockoff_band] = 0
-            self.output_proj.bias[knockoff_band] = 0
+            self.output_proj.weight[:, knockoff_indices] = 0
+            self.output_proj.bias[knockoff_indices] = 0
 
-            self.attention_weights.weight[:, knockoff_band] = 0
+            self.attention_weights.weight[:, knockoff_indices] = 0
 
     def forward(
         self,
@@ -271,7 +297,9 @@ class MultiScaleDeformableAttention(nn.Module):
         reference_points: Optional[torch.Tensor] = None,
         spatial_shapes: Optional[torch.Tensor] = None,
         level_start_index: Optional[torch.Tensor] = None,
-        knockoff_band: Optional[list] = None,
+        blueglass_conf: BLUEGLASSConf = None,
+        feature_pattern_selection: FeaturePattern = None,
+        knockoff: bool = False,
         **kwargs,
     ) -> torch.Tensor:
         """Forward Function of MultiScaleDeformableAttention
@@ -301,8 +329,8 @@ class MultiScaleDeformableAttention(nn.Module):
         Returns:
             torch.Tensor: forward results with shape `(num_query, bs, embed_dim)`
         """
-        if knockoff_band is not None:
-            self.knockoff_band(knockoff_band)
+        if knockoff:
+            self.knockoff_band(blueglass_conf, feature_pattern_selection)
         if value is None:
             value = query
 

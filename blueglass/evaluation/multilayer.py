@@ -9,7 +9,7 @@ from blueglass.configs import BLUEGLASSConf
 
 
 class MultiLayerEvaluator(DatasetEvaluator):
-    def __init__(self, conf: BLUEGLASSConf):
+    def __init__(self, conf: BLUEGLASSConf, runner_mode: str = None):
         self.conf = conf
         self.output_dir = f"{conf.experiment.output_dir}/inference"
         self.subevaluators: Dict[str, DatasetEvaluator] = {}

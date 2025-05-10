@@ -906,7 +906,7 @@ class TransformerDecoder(nn.Module):
                 memory_pos=pos,
                 self_attn_mask=tgt_mask,
                 cross_attn_mask=memory_mask,
-                blueglass_kwargs={
+                kwargs={
                     "blueglass_conf": blueglass_conf,
                     "reference_points": reference_points,
                 },
@@ -1024,20 +1024,40 @@ class DeformableTransformerEncoderLayer(nn.Module):
 
 
 class MultiHeadAttnKnockOff(nn.MultiheadAttention):
-    def knockoff_band(self, knockoff_band):
+    def knockoff_band(
+        self, blueglass_conf: BLUEGLASSConf, feature_pattern_selection: FeaturePattern
+    ):
         """
         Knocking off columns along the colums following the residual dimensions
         """
+
+        pattern = feature_pattern_selection.value
+        name = next(
+            (
+                k
+                for k in blueglass_conf.layer_knock_off.column_ranks.keys()
+                if pattern in k
+            ),
+            None,
+        )
+        start_percent, end_percent = sorted(
+            blueglass_conf.layer_knock_off.active_knockoff_range
+        )
+        columns_ranks = blueglass_conf.layer_knock_off.column_ranks[name]
+        total = len(columns_ranks)
+        start_idx = int((start_percent / 100) * total)
+        end_idx = int((end_percent / 100) * total)
+        knockoff_indices = columns_ranks[start_idx:end_idx]
         with torch.no_grad():
-            self.in_proj_weight[:, knockoff_band] = 0
+            self.in_proj_weight[:, knockoff_indices] = 0
             if self.q_proj_weight is not None:
-                self.q_proj_weight[:, [knockoff_band]] = 0
+                self.q_proj_weight[:, [knockoff_indices]] = 0
             if self.k_proj_weight is not None:
-                self.k_proj_weight[:, [knockoff_band]] = 0
+                self.k_proj_weight[:, [knockoff_indices]] = 0
             if self.v_proj_weight is not None:
-                self.v_proj_weight[:, [knockoff_band]] = 0
+                self.v_proj_weight[:, [knockoff_indices]] = 0
             if self.out_proj.bias is not None:
-                self.out_proj.bias[knockoff_band] = 0
+                self.out_proj.bias[knockoff_indices] = 0
 
     def forward(
         self,
@@ -1050,9 +1070,12 @@ class MultiHeadAttnKnockOff(nn.MultiheadAttention):
         average_attn_weights: bool = True,
         is_causal: bool = False,
         knockoff_band: list = None,
+        blueglass_conf: BLUEGLASSConf = None,
+        feature_pattern_selection: FeaturePattern = None,
+        knockoff: bool = False,
     ) -> Tuple[Tensor, Optional[Tensor]]:
-        if knockoff_band is not None:
-            self.knockoff_band(knockoff_band)
+        if knockoff:
+            self.knockoff_band(blueglass_conf, feature_pattern_selection)
         attn_output, attn_output_weights = super().forward(
             query=query,
             key=key,
@@ -1128,8 +1151,35 @@ class DeformableTransformerDecoderLayer(nn.Module):
     def with_pos_embed(tensor, pos):
         return tensor if pos is None else tensor + pos
 
-    def forward_ffn(self, tgt):
+    def forward_ffn(
+        self,
+        tgt,
+        blueglass_conf: BLUEGLASSConf = None,
+        feature_pattern_selection: FeaturePattern = None,
+        knockoff: bool = False,
+    ):
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        if knockoff:
+            pattern = feature_pattern_selection.value
+            name = next(
+                (
+                    k
+                    for k in blueglass_conf.layer_knock_off.column_ranks.keys()
+                    if pattern in k
+                ),
+                None,
+            )
+            start_percent, end_percent = sorted(
+                blueglass_conf.layer_knock_off.active_knockoff_range
+            )
+            columns_ranks = blueglass_conf.layer_knock_off.column_ranks[name]
+            total = len(columns_ranks)
+            start_idx = int((start_percent / 100) * total)
+            end_idx = int((end_percent / 100) * total)
+            knockoff_indices = columns_ranks[start_idx:end_idx]
+            with torch.no_grad():
+                self.linear1.weight[:, knockoff_indices] = 0
+                self.linear2.weight[knockoff_indices, :] = 0
         with torch.amp.autocast(device_type=device_type, enabled=False):
             tgt2 = self.linear2(self.dropout3(self.activation(self.linear1(tgt))))
 
@@ -1174,7 +1224,7 @@ class DeformableTransformerDecoderLayer(nn.Module):
         # sa
         self_attn_mask: Optional[Tensor] = None,  # mask used for self-attention
         cross_attn_mask: Optional[Tensor] = None,  # mask used for cross-attention
-        blueglass_kwargs: Optional[Dict[str, Any]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Input:
@@ -1183,42 +1233,32 @@ class DeformableTransformerDecoderLayer(nn.Module):
         """
         assert cross_attn_mask is None
         assert memory is not None, "expected memory."
-        assert blueglass_kwargs is not None, "blueglass_kwargs are None."
+        assert kwargs is not None, "kwargs are None."
 
         layer_name = f"layer_{self.layer_index}"
-        """
-        Layer Knockoff experiment
-        """
-        base_path = "./SAE_RESULTS/indices.npy"
-
-        layer_knockoff_exp_config = blueglass_kwargs["blueglass_conf"][
-            "layer_knock_off"
-        ]
-        knockoff = all(
-            value is not None for value in layer_knockoff_exp_config.values()
-        )
-
-        reference_points = blueglass_kwargs["reference_points"].detach()
-
         layer_id = self.layer_index
 
-        knockoff_band = None
-        if knockoff:
-            """
-            BlueGlass Layer Knockoff experiment
-            """
-            circle_indices = layer_knockoff_exp_config.circle_indices
-            circle_index = circle_indices[layer_id]
-            knockoff_config = layer_knockoff_exp_config.knockoff_config
-            if knockoff_config[layer_id]:
-                L_filter_ind_knockoff = np.load(base_path)
-                knockoff_band = L_filter_ind_knockoff
-                with torch.no_grad():
-                    tgt[:, :, L_filter_ind_knockoff] = 0
-                    tgt_query_pos[:, :, L_filter_ind_knockoff] = 0
-
+        blueglass_conf = kwargs["blueglass_conf"]
+        reference_points = kwargs["reference_points"].detach()
+        knockoff = blueglass_conf.layer_knock_off.knockoff_feature_model
+        active_knockoff_layer_name = (
+            blueglass_conf.layer_knock_off.active_knockoff_layer_name
+        )
+        knockoff = False
         # self attention
         if self.self_attn is not None:
+            # knockoff = True if active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value else if active_knockoff_layer_name.lower() == "all" else False
+            knockoff = (
+                active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value
+                or active_knockoff_layer_name == FeaturePattern.DET_DECODER_MHA.value
+                or active_knockoff_layer_name
+                == FeaturePattern.DET_DECODER_RESID_MHA.value
+                or (
+                    isinstance(active_knockoff_layer_name, str)
+                    and active_knockoff_layer_name.lower() == "all"
+                )
+            )
+
             q = k = self.with_pos_embed(tgt, tgt_query_pos)
             tgt2, attn_pattern = self.self_attn(
                 q,
@@ -1226,7 +1266,9 @@ class DeformableTransformerDecoderLayer(nn.Module):
                 tgt,
                 attn_mask=self_attn_mask,
                 average_attn_weights=False,
-                knockoff_band=knockoff_band,
+                blueglass_conf=blueglass_conf,
+                feature_pattern_selection=FeaturePattern.DET_DECODER_RESID_MHA,
+                knockoff=knockoff,
             )
 
             assert self.layer_index is not None, "layer_index not initialized."
@@ -1260,9 +1302,34 @@ class DeformableTransformerDecoderLayer(nn.Module):
                 key_padding_mask=text_attention_mask,
             )[0]
 
+            # """
+            # BlueGlass Recorder and Patcher
+            # """
+            # intercept_manager().recorder(FeaturePattern.DET_DECODER_SA_MHA).record(
+            #     layer_name,
+            #     {
+            #         "weights": attn_pattern.detach().cpu(),
+            #         "outputs": tgt2.detach().cpu(),
+            #     },
+            # )
+
+            # pattern_name = FeaturePattern.DET_DECODER_SA_MHA
+            # subpattern_name = FeatureSubPattern.OUTPUTS
+            # name = f"{layer_name}.{pattern_name.value}.{subpattern_name.value}"
+            # tgt2 = intercept_manager().patcher(name).patch(name, tgt2)
+
             tgt = tgt + self.catext_dropout(tgt2)
             tgt = self.catext_norm(tgt)
 
+        knockoff = (
+            active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value
+            or active_knockoff_layer_name == FeaturePattern.DET_DECODER_MHA.value
+            or active_knockoff_layer_name == FeaturePattern.DET_DECODER_RESID_MHA.value
+            or (
+                isinstance(active_knockoff_layer_name, str)
+                and active_knockoff_layer_name.lower() == "all"
+            )
+        )
         tgt2 = self.cross_attn(
             query=self.with_pos_embed(tgt, tgt_query_pos).transpose(0, 1),
             reference_points=tgt_reference_points.transpose(0, 1).contiguous(),
@@ -1270,7 +1337,9 @@ class DeformableTransformerDecoderLayer(nn.Module):
             spatial_shapes=memory_spatial_shapes,
             level_start_index=memory_level_start_index,
             key_padding_mask=memory_key_padding_mask,
-            knockoff_band=knockoff_band,
+            blueglass_conf=blueglass_conf,
+            feature_pattern_selection=FeaturePattern.DET_DECODER_RESID_MHA,
+            knockoff=knockoff,
         ).transpose(0, 1)
         tgt = tgt + self.dropout1(tgt2)
         tgt = self.norm1(tgt)
@@ -1295,7 +1364,21 @@ class DeformableTransformerDecoderLayer(nn.Module):
         name = f"{layer_name}.{pattern_name.value}.{subpattern_name.value}"
         tgt = intercept_manager().patcher(name).patch(name, tgt)
 
-        tgt = self.forward_ffn(tgt)
+        knockoff = (
+            active_knockoff_layer_name == FeaturePattern.DET_DECODER_MLP.value
+            or active_knockoff_layer_name == FeaturePattern.DET_DECODER_RESID_MLP.value
+            or (
+                isinstance(active_knockoff_layer_name, str)
+                and active_knockoff_layer_name.lower() == "all"
+            )
+        )
+
+        tgt = self.forward_ffn(
+            tgt,
+            blueglass_conf=blueglass_conf,
+            feature_pattern_selection=FeaturePattern.DET_DECODER_RESID_MLP,
+            knockoff=knockoff,
+        )
 
         assert isinstance(tgt, Tensor), "unexpected type for feature."
 

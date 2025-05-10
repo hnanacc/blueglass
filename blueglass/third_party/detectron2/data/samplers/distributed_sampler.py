@@ -276,7 +276,7 @@ class InferenceSampler(Sampler):
     this sampler produces different number of samples on different workers.
     """
 
-    def __init__(self, size: int, evalaute_single_gpu=False):
+    def __init__(self, size: int):
         """
         Args:
             size (int): the total number of data of the underlying dataset to sample from

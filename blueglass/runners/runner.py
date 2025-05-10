@@ -93,8 +93,8 @@ class Runner:
         raise ValueError("unsupported scheduler.")
 
     def _compute_scaled_lr(self, lr: float) -> float:
-        return lr/comm.get_world_size()
-        
+        return lr / comm.get_world_size()
+
     def build_optimizer(
         self,
         conf: BLUEGLASSConf,
@@ -117,27 +117,27 @@ class Runner:
         return Checkpointer(model, path, optimizer=optimizer)
 
     def build_infer_dataloader(self, conf: BLUEGLASSConf) -> DataLoader:
-        return build_test_dataloader(
-            conf.dataset.infer, conf.dataset.batch_size, conf.num_data_workers
-        )
+        return self.build_test_dataloader(self.conf)
 
     def build_test_dataloader(self, conf: BLUEGLASSConf) -> DataLoader:
         return build_test_dataloader(
-            conf.dataset.test, conf.dataset.batch_size, conf.num_data_workers
+            conf.dataset.test, conf.dataset.test_batch_size, conf.num_data_workers
         )
 
     def build_train_dataloader(self, conf: BLUEGLASSConf) -> DataLoader:
         return build_train_dataloader(
-            conf.dataset.train, conf.dataset.batch_size, conf.num_data_workers
+            conf.dataset.train, conf.dataset.train_batch_size, conf.num_data_workers
         )
 
-    def build_evaluator(self, conf: BLUEGLASSConf) -> DatasetEvaluator:
-        return build_evaluator(conf)
+    def build_evaluator(
+        self, conf: BLUEGLASSConf, runner_mode: str = None
+    ) -> DatasetEvaluator:
+        return build_evaluator(conf, runner_mode)
 
     def build_model(self, conf: BLUEGLASSConf) -> nn.Module:
         return create_ddp_model(build_model(conf))
 
-    def prepare_filter_scheme(self, conf:BLUEGLASSConf, remove_io: bool = True) -> str:
+    def prepare_filter_scheme(self, conf: BLUEGLASSConf, remove_io: bool = True) -> str:
         patterns = conf.feature.patterns.copy()
         if remove_io:
             patterns.remove(FeaturePattern.IO)
@@ -167,12 +167,12 @@ class Runner:
     def register_metrics(self, records_dict: Dict[str, Any]):
         if self.step % self.logs_period != 0:
             return None
-        
+
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
         }
-        
+
         gathered_records_dict = comm.gather(records_dict)
 
         if not comm.is_main_process():
@@ -275,7 +275,7 @@ class Runner:
 
             records_dict["metrics"] = self.test()
             self.model = self.model.train()
-            
+
             self.register_metrics(records_dict)
 
             self.checkpoint()
@@ -324,7 +324,7 @@ class Runner:
         # All processes must reach here before proceeding
         if not (force_save or self.step % self.ckpt_period == 0):
             return None
-        
+
         if comm.is_main_process():
             self._checkpoint()
             if self.conf.experiment.use_wandb:

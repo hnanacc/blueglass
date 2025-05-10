@@ -296,3 +296,9 @@ class AutoEncoder(nn.Module):
     def sparse_codes(self) -> Tensor:
         decoder = self.decoder
         return decoder.weight.T.detach()  # [N, D]
+
+    @torch.no_grad()
+    def set_knockoff_columns(self, column_indices, feature_bias=False):
+        self.decoder.weight[:, column_indices] = 0
+        if feature_bias:
+            self.feature_bias[column_indices] = 0

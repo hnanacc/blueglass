@@ -48,7 +48,7 @@ class VLMLinearProbeRunner(Runner):
     def process_records(
         self, gathered_records: List[Dict[str, Dict[str, Dict[str, Any]]]]
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
-        losses_dict, metric_dict, extras_dict, visual_metrics_dict= {}, {}, {}, {}
+        losses_dict, metric_dict, extras_dict, visual_metrics_dict = {}, {}, {}, {}
 
         for rank, records_per_rank in enumerate(gathered_records):
             for branch, records_per_branch in records_per_rank.items():

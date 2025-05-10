@@ -17,8 +17,8 @@ from .saes import SAEEvaluator
 from blueglass.configs import BLUEGLASSConf
 
 
-def build_evaluator(conf: BLUEGLASSConf) -> DatasetEvaluator:
+def build_evaluator(conf: BLUEGLASSConf, runner_mode: str = None) -> DatasetEvaluator:
     if conf.evaluator.use_multi_layer:
-        return MultiLayerEvaluator(conf)
+        return MultiLayerEvaluator(conf, runner_mode)
     else:
-        return build_mono_prediction_evaluator(conf)
+        return build_mono_prediction_evaluator(conf, runner_mode)

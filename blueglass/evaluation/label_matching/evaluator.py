@@ -21,7 +21,9 @@ def prepare_bbox_format(ds: Datasets):
 
 
 class LabelMatchingEvaluator(DatasetEvaluator):
-    def __init__(self, conf: BLUEGLASSConf, subeval: DatasetEvaluator):
+    def __init__(
+        self, conf: BLUEGLASSConf, subeval: DatasetEvaluator, runner_mode: str = None
+    ):
         assert isinstance(
             subeval, DatasetEvaluator
         ), "invalid evaluator type for subeval."
@@ -30,9 +32,13 @@ class LabelMatchingEvaluator(DatasetEvaluator):
             "cuda:0" if torch.cuda.device_count() > 0 else "cuda"
         )
         self.conf = conf
+        conf_dataset = (
+            conf.dataset.infer if runner_mode == "infer" else conf.dataset.test
+        )
+
         self.num_vis_samples = conf.evaluator.num_vis_samples
         self.dt_bbox_format = BoxMode.XYXY_ABS
-        self.gt_bbox_format = prepare_bbox_format(conf.dataset.test)
+        self.gt_bbox_format = prepare_bbox_format(conf_dataset)
         self.output_dir = conf.experiment.output_dir
         self.vis_save_dpath = os.path.join(self.output_dir, "vis")
 

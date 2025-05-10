@@ -103,7 +103,7 @@ class SAERunner(Runner):
             if conf.runner.lr is not None
             else 1e-4 / ((module.latents_dim / 2**14) ** 0.5)
         )
-        
+
     def build_optimizer(
         self,
         conf: BLUEGLASSConf,

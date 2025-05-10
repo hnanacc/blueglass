@@ -6,7 +6,8 @@ from blueglass.configs import BLUEGLASSConf, Runner as RunnerType
 from .runner import Runner
 from .modelstore import ModelstoreRunner
 from .layers_patch import LayersPatchRunner
-from .knockoff_red_attn_wt import KnockOffRedAttnWtRunner
+from .knockoff_columns import KnockoffColumns
+from .sae_knockoff import SaeKnockoff
 from .features_extract import FeatureExtractRunner
 from .probes_linear_vlm import VLMLinearProbeRunner
 from .sae_probe import SAELinearProbeRunner
@@ -27,7 +28,8 @@ def build_runner(conf: BLUEGLASSConf) -> Runner:
         RunnerType.LAYERS_PATCH: LayersPatchRunner,
         RunnerType.INTERPRETATION: InterpretationRunner,
         RunnerType.DECODER_CLUSTER: DecoderClusterRunner,
-        RunnerType.KNOCKOFF_LAYER: KnockOffRedAttnWtRunner,
+        RunnerType.KNOCKOFF_LAYER: KnockoffColumns,
+        RunnerType.SAE_KNOCKOFF: SaeKnockoff,
     }
 
     runner_class = runner_classes.get(conf.runner.name)

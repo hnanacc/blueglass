@@ -22,6 +22,7 @@ class DecoderClusterSAEVariantConf(SAEConf):
     )
     # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
 
+
 @dataclass
 class DecoderClusterRunnerConf(RunnerConf):
     name: Runner = Runner.DECODER_CLUSTER

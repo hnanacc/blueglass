@@ -115,7 +115,12 @@ def compute_confusion_mask(
 
 
 class PredictionAnalysisEvaluator(DatasetEvaluator):
-    def __init__(self, conf: BLUEGLASSConf, subevaluator: DatasetEvaluator):
+    def __init__(
+        self,
+        conf: BLUEGLASSConf,
+        subevaluator: DatasetEvaluator,
+        runner_mode: str = None,
+    ):
         self.conf = conf
         self.subevaluator = subevaluator
         self.predic_intermed = defaultdict(list)

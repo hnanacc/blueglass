@@ -474,10 +474,10 @@ class DeformableTransformerDecoderLayer(nn.Module):
         src_spatial_shapes,
         level_start_index,
         src_padding_mask=None,
-        blueglass_kwargs: Optional[Dict[str, Any]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
     ):
-        assert blueglass_kwargs is not None, "blueglass_kwargs are None."
-        orig_reference_points = blueglass_kwargs["reference_points"].detach()
+        assert kwargs is not None, "kwargs are None."
+        orig_reference_points = kwargs["reference_points"].detach()
 
         # self attention
         q = k = self.with_pos_embed(tgt, query_pos)
@@ -594,7 +594,7 @@ class DeformableTransformerDecoder(nn.Module):
                 src_spatial_shapes,
                 src_level_start_index,
                 src_padding_mask,
-                blueglass_kwargs={
+                kwargs={
                     "reference_points": reference_points,
                 },
             )

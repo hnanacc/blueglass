@@ -25,7 +25,7 @@ class GroupedSAE(nn.Module):
         self.device = DEVICE
         self.sae_per_name = nn.ModuleDict(
             {
-                self.transform_name(name): build_sae(conf, feature_dim)
+                GroupedSAE.transform_name(name=name): build_sae(conf, feature_dim)
                 for name, feature_dim in feature_dim_per_name.items()
             }
         )
@@ -41,7 +41,8 @@ class GroupedSAE(nn.Module):
         assert isinstance(latents_dim, int), "Expected latents_dim to be int."
         return latents_dim
 
-    def transform_name(self, name: str, reverse: bool = False) -> str:
+    @staticmethod
+    def transform_name(name: str, reverse: bool = False) -> str:
         if reverse:
             return name.replace("__", ".")
         else:
