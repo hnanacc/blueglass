@@ -335,7 +335,7 @@ class SaeKnockoff(SAERunner):
 
             if self.infer_step == 0:
                 records_dict["metrics"].update(records_column_ranks)
-            self.register_infer_metrics(records_dict)
+            self.register_infer_metrics(records_dict, mode="infer")
 
             del records_dict
             torch.cuda.empty_cache()
@@ -345,7 +345,7 @@ class SaeKnockoff(SAERunner):
                     f"Processed at {self.step}: {self.infer_step+1} / {len(self.conf.layer_knock_off.knockoff_range)}"
                 )
 
-    def register_infer_metrics(self, records_dict: Dict[str, Any]):
+    def register_infer_metrics(self, records_dict: Dict[str, Any], mode: str = "infer") -> None:
         if self.infer_step % self.logs_period != 0:
             return None
 
@@ -364,7 +364,7 @@ class SaeKnockoff(SAERunner):
         ), "comm error! unexpected data format."
 
         extras_dict, losses_dict, metric_dict, visual_metric_dict = (
-            self.process_records(gathered_records_dict)
+            self.process_records(gathered_records_dict, mode=mode)
         )
 
         if self.conf.experiment.use_wandb:

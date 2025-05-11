@@ -153,7 +153,7 @@ class Runner:
         return f"layer_({layerids}).({patterns}).({subpatns})"
 
     def process_records(
-        self, gathered_records: List[Dict[str, Any]]
+        self, gathered_records: List[Dict[str, Any]], mode: str = "test"
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
         losses_dict = {}
         metric_dict = {}
@@ -164,7 +164,7 @@ class Runner:
 
         return losses_dict, metric_dict, extras_dict
 
-    def register_metrics(self, records_dict: Dict[str, Any]):
+    def register_metrics(self, records_dict: Dict[str, Any], mode: str = "test") -> None:
         if self.step % self.logs_period != 0:
             return None
 
@@ -183,7 +183,7 @@ class Runner:
         ), "comm error! unexpected data format."
 
         extras_dict, losses_dict, metric_dict, visual_metric_dict = (
-            self.process_records(gathered_records_dict)
+            self.process_records(gathered_records_dict, mode=mode)
         )
 
         assert (
@@ -276,7 +276,7 @@ class Runner:
             records_dict["metrics"] = self.test()
             self.model = self.model.train()
 
-            self.register_metrics(records_dict)
+            self.register_metrics(records_dict, mode="test")
 
             self.checkpoint()
 
