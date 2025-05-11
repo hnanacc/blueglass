@@ -1249,10 +1249,14 @@ class DeformableTransformerDecoderLayer(nn.Module):
         if self.self_attn is not None:
             # knockoff = True if active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value else if active_knockoff_layer_name.lower() == "all" else False
             knockoff = (
-                active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value
-                or active_knockoff_layer_name == FeaturePattern.DET_DECODER_MHA.value
-                or active_knockoff_layer_name
-                == FeaturePattern.DET_DECODER_RESID_MHA.value
+                any(
+                    pattern.value in active_knockoff_layer_name
+                    for pattern in [
+                        FeaturePattern.DET_DECODER_SA_MHA,
+                        FeaturePattern.DET_DECODER_MHA,
+                        FeaturePattern.DET_DECODER_RESID_MHA,
+                    ]
+                )
                 or (
                     isinstance(active_knockoff_layer_name, str)
                     and active_knockoff_layer_name.lower() == "all"
@@ -1322,9 +1326,14 @@ class DeformableTransformerDecoderLayer(nn.Module):
             tgt = self.catext_norm(tgt)
 
         knockoff = (
-            active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value
-            or active_knockoff_layer_name == FeaturePattern.DET_DECODER_MHA.value
-            or active_knockoff_layer_name == FeaturePattern.DET_DECODER_RESID_MHA.value
+            any(
+                pattern.value in active_knockoff_layer_name
+                for pattern in [
+                    FeaturePattern.DET_DECODER_SA_MHA,
+                    FeaturePattern.DET_DECODER_MHA,
+                    FeaturePattern.DET_DECODER_RESID_MHA,
+                ]
+            )
             or (
                 isinstance(active_knockoff_layer_name, str)
                 and active_knockoff_layer_name.lower() == "all"
@@ -1365,8 +1374,13 @@ class DeformableTransformerDecoderLayer(nn.Module):
         tgt = intercept_manager().patcher(name).patch(name, tgt)
 
         knockoff = (
-            active_knockoff_layer_name == FeaturePattern.DET_DECODER_MLP.value
-            or active_knockoff_layer_name == FeaturePattern.DET_DECODER_RESID_MLP.value
+            any(
+                pattern.value in active_knockoff_layer_name
+                for pattern in [
+                    FeaturePattern.DET_DECODER_MLP,
+                    FeaturePattern.DET_DECODER_RESID_MLP,
+                ]
+            )
             or (
                 isinstance(active_knockoff_layer_name, str)
                 and active_knockoff_layer_name.lower() == "all"
