@@ -217,7 +217,7 @@ class SaeKnockoff(SAERunner):
             for metric in _records_patcher:
                 for submetric in _records_patcher[metric]:
                     records_dict[
-                        f"FeatModel_KnockfOff/AllLayers/{metric}_{submetric}"
+                        f"FeatModel_KnockfOff/All_Layers/{metric}_{submetric}"
                     ] = _records_patcher[metric][submetric]
 
         def run_column_reduction_per_layer():
@@ -233,9 +233,7 @@ class SaeKnockoff(SAERunner):
                     logger.info(
                         f"Evaluation for detection in VLM with knockoff range in FeatModel: {active_knockoff_range} using sae's column ranks: {name}."
                     )
-                    _records_patcher = inference_on_dataset(
-                        dm, ds, ev, fwd_kwargs={"blueglassconf": self.conf}
-                    )
+                    _records_patcher = inference_on_dataset(dm, ds, ev)
                     for metric in _records_patcher:
                         for submetric in _records_patcher[metric]:
                             records_dict[
@@ -285,9 +283,6 @@ class SaeKnockoff(SAERunner):
         (3) the model with ranked components knocked off in the transformer block.
         Return the output records for all three runs.
         """
-        
-        logger.info("Evaluation for detection in VLM using knockoff ranges directly in the model.")
-        infer_knockoff = self.infer_with_knockoff_in_feat_model()
 
         records_patcher = {}
         if self.vanilla_metrics is None:
@@ -322,6 +317,8 @@ class SaeKnockoff(SAERunner):
         logger.info("Evaluation for detection in VLM using sae patchers and knockoff ranges.")
         infer_patcher = self.infer_with_sae_knockoff_patchers(knockoff=True)
 
+        logger.info("Evaluation for detection in VLM using knockoff ranges directly in the model.")
+        infer_knockoff = self.infer_with_knockoff_in_feat_model()
 
         records_patcher["infer_metrics"] = {
             **self.vanilla_metrics,
@@ -356,9 +353,7 @@ class SaeKnockoff(SAERunner):
                 )
 
     def register_infer_metrics(self, records_dict: Dict[str, Any], mode: str = "infer") -> None:
-        if self.infer_step % self.logs_period != 0:
-            return None
-
+        
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()

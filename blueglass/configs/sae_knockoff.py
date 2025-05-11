@@ -38,6 +38,7 @@ class saeknockoffExpConfig(LayerKnockoffExpConf):
             [100, 75],
             [100, 50],
             [100, 25],
+            [100, 10],
         ]
     )
 
