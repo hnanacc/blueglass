@@ -89,11 +89,11 @@ class RunnerConf:
 
     max_steps: int = 100_000
     logs_period: int = 1
-    eval_period: int = 1000
-    eval_knockoff_period: int = 1000
+    eval_period: int = 500
+    eval_knockoff_period: int = 500
     patch_eval_period: int = 500
-    visuals_eval_period: int = 1000
-    ckpt_period: int = 1000
+    visuals_eval_period: int = 500
+    ckpt_period: int = 500
     resume: bool = False
     save_ckpt_locally: bool = field(default=False)
 
@@ -131,7 +131,7 @@ class SAEConf:
 
     threshold_top_latents: float = 0.5
     threshold_update_rate: float = 0.01
-    threshold_latents_dead: int = 2_000_000
+    threshold_latents_dead: int = 2_00_000
     min_threshold_latents_dead: int = 1_00_000
     threshold_latents_dense: float = 0.5
 
@@ -177,8 +177,8 @@ class FeatureConf:
     path: Optional[str] = None
     use_cached: bool = False
 
-    train_batch_size: int = 512
-    test_batch_size: int = 512
+    train_batch_size: int = 1024
+    test_batch_size: int = 1024
     compute_confusion: bool = False
     filter_column_scheme: Optional[Dict[str, Union[int, float, str]]] = None
     max_rows_per_part: int = 500_000

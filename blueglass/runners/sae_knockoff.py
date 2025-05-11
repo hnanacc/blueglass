@@ -351,6 +351,7 @@ class SaeKnockoff(SAERunner):
                 logger.info(
                     f"Processed at {self.step}: {self.infer_step+1} / {len(self.conf.layer_knock_off.knockoff_range)}"
                 )
+        self.vanilla_metrics = None
 
     def register_infer_metrics(self, records_dict: Dict[str, Any], mode: str = "infer") -> None:
         

@@ -1244,25 +1244,23 @@ class DeformableTransformerDecoderLayer(nn.Module):
         active_knockoff_layer_name = (
             blueglass_conf.layer_knock_off.active_knockoff_layer_name
         )
-        knockoff = False
         # self attention
         if self.self_attn is not None:
             # knockoff = True if active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value else if active_knockoff_layer_name.lower() == "all" else False
             knockoff = (
-                any(
-                    pattern.value in active_knockoff_layer_name
-                    for pattern in [
-                        FeaturePattern.DET_DECODER_SA_MHA,
-                        FeaturePattern.DET_DECODER_MHA,
-                        FeaturePattern.DET_DECODER_RESID_MHA,
-                    ]
-                )
-                or (
-                    isinstance(active_knockoff_layer_name, str)
-                    and active_knockoff_layer_name.lower() == "all"
+                isinstance(active_knockoff_layer_name, str)
+                and (
+                    active_knockoff_layer_name.lower() == "all"
+                    or any(
+                        pattern.value in active_knockoff_layer_name
+                        for pattern in [
+                            FeaturePattern.DET_DECODER_SA_MHA,
+                            FeaturePattern.DET_DECODER_MHA,
+                            FeaturePattern.DET_DECODER_RESID_MHA,
+                        ]
+                    )
                 )
             )
-
             q = k = self.with_pos_embed(tgt, tgt_query_pos)
             tgt2, attn_pattern = self.self_attn(
                 q,
@@ -1326,17 +1324,17 @@ class DeformableTransformerDecoderLayer(nn.Module):
             tgt = self.catext_norm(tgt)
 
         knockoff = (
-            any(
-                pattern.value in active_knockoff_layer_name
-                for pattern in [
-                    FeaturePattern.DET_DECODER_SA_MHA,
-                    FeaturePattern.DET_DECODER_MHA,
-                    FeaturePattern.DET_DECODER_RESID_MHA,
-                ]
-            )
-            or (
-                isinstance(active_knockoff_layer_name, str)
-                and active_knockoff_layer_name.lower() == "all"
+            isinstance(active_knockoff_layer_name, str)
+            and (
+                active_knockoff_layer_name.lower() == "all"
+                or any(
+                    pattern.value in active_knockoff_layer_name
+                    for pattern in [
+                        FeaturePattern.DET_DECODER_SA_MHA,
+                        FeaturePattern.DET_DECODER_MHA,
+                        FeaturePattern.DET_DECODER_RESID_MHA,
+                    ]
+                )
             )
         )
         tgt2 = self.cross_attn(
@@ -1374,16 +1372,16 @@ class DeformableTransformerDecoderLayer(nn.Module):
         tgt = intercept_manager().patcher(name).patch(name, tgt)
 
         knockoff = (
-            any(
-                pattern.value in active_knockoff_layer_name
-                for pattern in [
-                    FeaturePattern.DET_DECODER_MLP,
-                    FeaturePattern.DET_DECODER_RESID_MLP,
-                ]
-            )
-            or (
-                isinstance(active_knockoff_layer_name, str)
-                and active_knockoff_layer_name.lower() == "all"
+            isinstance(active_knockoff_layer_name, str)
+            and (
+                active_knockoff_layer_name.lower() == "all"
+                or any(
+                    pattern.value in active_knockoff_layer_name
+                    for pattern in [
+                        FeaturePattern.DET_DECODER_MLP,
+                        FeaturePattern.DET_DECODER_RESID_MLP,
+                    ]
+                )
             )
         )
 
