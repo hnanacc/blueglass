@@ -64,7 +64,7 @@ class SAEVariantConf(SAEConf):
 class SAERunnerConf(RunnerConf):
     name: Runner = Runner.SAE
     mode: RunnerMode = RunnerMode.TRAIN
-    lr: Optional[float] = field(default_factory=lambda: None)
+    lr: Optional[float] = field(default_factory=lambda: 1e-4)
     warmup_steps: int = 1
     eps: float = 1e-8
     precision: Precision = Precision.BFLOAT16
@@ -102,12 +102,12 @@ class SAEFeatureConf(FeatureConf):
 def register_saeknockoff():
     cs = ConfigStore.instance()
 
-    for ds_name, _, ds_test, ev in DATASETS_AND_EVALS:
+    for ds_name, ds_train, ds_test, ev in DATASETS_AND_EVALS:
         cs.store(
             f"saeknockoff.yolo.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.YOLO,
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
@@ -124,7 +124,7 @@ def register_saeknockoff():
             f"saeknockoff.mmdet_dinodetr.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.DINO_DETR,
                     conf_path=osp.join(
@@ -150,7 +150,7 @@ def register_saeknockoff():
             f"saeknockoff.mmdet_detr.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.DETR,
                     conf_path=osp.join(
@@ -174,7 +174,7 @@ def register_saeknockoff():
             f"saeknockoff.gdino.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GDINO,
                     conf_path=osp.join(
@@ -200,7 +200,7 @@ def register_saeknockoff():
             f"saeknockoff.genu.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GENU,
                     conf_path=osp.join(
@@ -229,7 +229,7 @@ def register_saeknockoff():
             f"saeknockoff.florence.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
                 sae=SAEVariantConf(),
@@ -244,7 +244,7 @@ def register_saeknockoff():
             f"saeknockoff.gemini.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GEMINI,
                     api_key=os.getenv("GEMINI_KEY", None),

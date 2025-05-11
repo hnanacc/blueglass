@@ -103,7 +103,7 @@ class SaeKnockoff(SAERunner):
 
     def _build_patchers(self, knockoff=False) -> Dict[str, Patcher]:
 
-        model = maybe_strip_ddp(self.vanilla_sae_model)
+        model = maybe_strip_ddp(self.model)
         model = copy.deepcopy(model)
         if knockoff is True:
             for name, sae in model.eval().sae_per_name.items():
@@ -196,7 +196,8 @@ class SaeKnockoff(SAERunner):
 
         # update blueglass config with the current knockoff relevant information
         records_dict = {}
-        sae_pactchers = self.vanilla_sae_model.eval().sae_per_name.keys()
+        model = maybe_strip_ddp(self.vanilla_sae_model)
+        sae_pactchers = model.eval().sae_per_name.keys()
         ds = self.dataloader
         use_all_layers = self.conf.layer_knock_off.use_all_layers
         self.conf.layer_knock_off.knockoff_feature_model = True

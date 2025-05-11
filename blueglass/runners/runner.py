@@ -100,7 +100,6 @@ class Runner:
         conf: BLUEGLASSConf,
         model: nn.Module,
     ) -> Optimizer:
-        conf.runner.lr = conf.runner.lr/conf.runner.world_size
         if conf.runner.optimizer == "adamw":
             return AdamW(
                 model.parameters(),

@@ -9,9 +9,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 MAX_ROWS_PER_FILE = 500_000
-OLD_ROOT_DIR = "/scr/qutub/datasets/BlueLens/features_datasets/gdino/gdino.coco_mini"
-NEW_ROOT_DIR = "BlueLensPosMINI"
-NEW_1_ROOT_DIR = "BlueLensPosMINI_1"
+OLD_ROOT_DIR = "/export/work/squtub/datasets/BlueLens/features_datasets/gdino/gdino.coco_train"
+NEW_ROOT_DIR = "BlueLensPosNeg_delete"
+NEW_1_ROOT_DIR = "BlueLensPosNeg"
 
 
 def log(msg):
@@ -53,7 +53,20 @@ def _process_single_file(args):
         """
         Add your custom filter logic here.
         """
-        df = df[df["conf_msk"] == True]
+        # 1. Filter TP and FP
+        df_tp = df[df["conf_msk"] == True]
+        df_fp = df[df["conf_msk"] == False]
+
+        # 2. Determine how many FPs to sample (200% of TP count)
+        num_tp = len(df_tp)
+        num_fp_to_sample = int(2.0 * num_tp)
+
+        # 3. Sample FPs
+        df_fp_sampled = df_fp.sample(n=num_fp_to_sample, random_state=42)
+
+        # 4. Combine
+        df_combined = pd.concat([df_tp, df_fp_sampled], ignore_index=True)
+        df = df_combined
 
         if df.empty or df["features"].empty:
             return (part_file, True, "Empty after filtering")
@@ -223,6 +236,6 @@ if __name__ == "__main__":
     from blueglass.configs import BLUEGLASSConf
 
     conf = BLUEGLASSConf()
-    num_workers = 1
+    num_workers = 75
     filter_and_rewrite_BlueLens(conf=conf, num_workers=num_workers)
     consolidate(conf, num_workers=num_workers)  # or 32 if you have CPUs

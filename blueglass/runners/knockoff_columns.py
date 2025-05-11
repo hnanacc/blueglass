@@ -327,7 +327,8 @@ class KnockoffColumns(SAERunner):
 
         # update blueglass config with the current knockoff relevant information
         records_dict = {}
-        sae_pactchers = self.vanilla_sae_model.eval().sae_per_name.keys()
+        model = maybe_strip_ddp(self.vanilla_sae_model)
+        sae_pactchers = model.eval().sae_per_name.keys()
         ds = self.dataloader
         use_all_layers = self.conf.layer_knock_off.use_all_layers
         self.conf.layer_knock_off.knockoff_feature_model = True
