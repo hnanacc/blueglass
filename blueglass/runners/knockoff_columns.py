@@ -264,7 +264,6 @@ class KnockoffColumns(SAERunner):
                 prefix = "Knockoff_SAE_Patcher/ALL_Patchers"
             else:
                 prefix = "Vanilla_SAE_Patcher/ALL_Patchers"
-            self.conf.layer_knock_off.use_all_layers = True
             self.vanilla_feature_model.conf = self.conf
             dm = FeatureInterceptor(
                 self.conf, self.vanilla_feature_model, patchers_per_name=built_patchers
@@ -287,7 +286,6 @@ class KnockoffColumns(SAERunner):
                 prefix = "Knockoff_SAE_Patcher"
             else:
                 prefix = "Vanilla_SAE_Patcher"
-            self.conf.layer_knock_off.use_all_layers = False
             self.vanilla_feature_model.conf = self.conf
             for name, _single_patcher in built_patchers.items():
                 records_patcher = {}
@@ -335,7 +333,6 @@ class KnockoffColumns(SAERunner):
 
         def run_column_reduction_all_layers():
             self.conf.layer_knock_off.active_knockoff_layer_name = "all"
-            self.conf.layer_knock_off.active_use_all_layers_mode = True
             self.vanilla_feature_model.conf = self.conf
             dm = copy.deepcopy(self.vanilla_feature_model)
             ev = self.build_evaluator(self.conf, runner_mode="infer")
@@ -353,7 +350,6 @@ class KnockoffColumns(SAERunner):
             for name in sae_pactchers:
                 if self.conf.layer_knock_off.knockoff_layer_selection.get(name, False):
                     self.conf.layer_knock_off.active_knockoff_layer_name = name
-                    self.conf.layer_knock_off.active_use_all_layers_mode = True
                     self.vanilla_feature_model.conf = self.conf
 
                     dm = copy.deepcopy(self.vanilla_feature_model)
