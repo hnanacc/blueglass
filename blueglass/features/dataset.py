@@ -143,7 +143,7 @@ class InterceptorStream(FeatureStream):
             yield self._dequeue_buffer()
 
     def _prepare_dataloader(self) -> DataLoader:
-        return build_test_dataloader(self.dataset, self.conf.dataset.batch_size)
+        return build_test_dataloader(self.dataset, self.conf.dataset.test_batch_size)
 
     def _filtered(self, items: Dict[str, Any]) -> Dict[str, Any]:
         return {

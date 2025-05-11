@@ -272,7 +272,7 @@ class SAERunner(Runner):
             # Step 2. Measure vanilla metrics on test data and feature model.
             if self.vanilla_fm_metrics is None:
                 ds = build_test_dataloader(
-                    self.conf.dataset.test, self.conf.dataset.batch_size
+                    self.conf.dataset.test, self.conf.dataset.test_batch_size
                 )
                 ev = self.build_evaluator(self.conf)
                 logger.info("Evaluation for detection in VLM (vanilla).")
@@ -306,7 +306,7 @@ class SAERunner(Runner):
 
         records_patcher = {}
         built_patchers = self._build_patchers()
-        ds = build_test_dataloader(self.conf.dataset.test, self.conf.dataset.batch_size)
+        ds = build_test_dataloader(self.conf.dataset.test, self.conf.dataset.test_batch_size)
         for name, _single_patcher in built_patchers.items():
             single_patcher = {name: _single_patcher}
             dm = FeatureInterceptor(

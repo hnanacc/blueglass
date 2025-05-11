@@ -554,7 +554,7 @@ class SaeKnockoff(SAERunner):
             # Step 2. Measure vanilla metrics on test data and feature model.
             if self.vanilla_fm_metrics is None:
                 ds = build_test_dataloader(
-                    self.conf.dataset.test, self.conf.dataset.batch_size
+                    self.conf.dataset.test, self.conf.dataset.test_batch_size
                 )
                 ev = self.build_evaluator(self.conf, runner_mode="test")
                 logger.info("Evaluation for detection in VLM (vanilla).")

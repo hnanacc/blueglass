@@ -91,7 +91,7 @@ class DecoderClusterRunner(SAERunner):
 
     def build_infer_dataloader(self, conf: BLUEGLASSConf) -> DataLoader:
         return build_test_dataloader(
-            conf.dataset.test, conf.dataset.batch_size, conf.num_data_workers
+            conf.dataset.test, conf.dataset.test_batch_size, conf.num_data_workers
         )
 
     def process_records(
@@ -237,7 +237,7 @@ class DecoderClusterRunner(SAERunner):
         records_patcher = {}
         if self.vanilla_metrics is None:
             ds = build_test_dataloader(
-                self.conf.dataset.test, self.conf.dataset.batch_size
+                self.conf.dataset.test, self.conf.dataset.test_batch_size
             )
             ev = self.build_evaluator(self.conf)
             logger.info("Evaluation for detection in VLM (vanilla).")

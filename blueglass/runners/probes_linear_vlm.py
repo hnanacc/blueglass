@@ -11,6 +11,7 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from blueglass.runners.runner import Runner
 from blueglass.features import FeatureInterceptor
+from blueglass.configs.constants import FeaturePattern
 from blueglass.modeling.probes import LinearProbedVLM
 from blueglass.third_party.detectron2.evaluation import DatasetEvaluator
 from blueglass.configs import BLUEGLASSConf
@@ -22,8 +23,8 @@ logger = setup_blueglass_logger(__name__)
 class VLMLinearProbeRunner(Runner):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__(conf)
-        self.feature_pattern = FeaturePatterns(conf.feature.pattern)
-        self.infer_batch_size = conf.dataset.batch_size
+        self.feature_pattern = FeaturePattern(conf.feature.pattern)
+        self.infer_batch_size = conf.dataset.test_batch_size
         self.probe_fwd_period = conf.probe.fwd_period
 
     def build_model(self, conf: BLUEGLASSConf) -> nn.Module:
