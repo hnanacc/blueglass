@@ -8,6 +8,7 @@
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 [![Hugging Face](https://img.shields.io/badge/dataset-Hugging%20Face-orange)](https://huggingface.co/)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/IntelLabs/blueglass/badge)](https://scorecard.dev/viewer/?uri=github.com/IntelLabs/blueglass)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/IntelLabs/blueglass)
 
 **BlueGlass** is an open-source framework for interpretability and analysis of vision-language and vision-only models. It empowers researchers and practitioners to understand what deep models *see* and *focus on* by offering tools to extract, probe, and build ad hoc XAI models for internal representations.
 
