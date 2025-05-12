@@ -169,7 +169,7 @@ class SAERunner(Runner):
         return built_patchers
 
     def process_records(
-        self, gathered_records: List[Dict[str, Any]], mode: str = "test"
+        self, gathered_records: List[Dict[str, Any]], metric_mode: str = "test"
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
         def strip_extra_prefix(key: str, substr: str) -> str:
             parts = key.rsplit("/", 1)
@@ -209,7 +209,7 @@ class SAERunner(Runner):
                     k: v for k, v in metrics_data.items() if "visual" in k
                 }
                 non_visual_metrics = {
-                    f"metrics/{k}": v
+                    f"{metric_mode}_metrics/{k}": v
                     for k, v in metrics_data.items()
                     if "visual" not in k
                 }
@@ -233,7 +233,7 @@ class SAERunner(Runner):
             losses_dict["losses_reduced"] = sum(losses_dict.values())
 
         if len(metrics_dict) > 0:
-            prefix = f"metrics_{mode}_fitness"
+            prefix = f"metrics_{metric_mode}_fitness"
             metrics_dict[prefix] = sum(metrics_dict.values())
 
             # Computing metric fitness based on each sae

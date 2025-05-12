@@ -60,17 +60,6 @@ class SAEVariantConf(SAEConf):
     topk: int = 32
     # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
 
-
-@dataclass
-class SAERunnerConf(RunnerConf):
-    name: Runner = Runner.SAE
-    mode: RunnerMode = RunnerMode.TRAIN
-    lr: Optional[float] = field(default_factory=lambda: 1e-4)
-    warmup_steps: int = 1
-    eps: float = 1e-8
-    precision: Precision = Precision.BFLOAT16
-
-
 @dataclass
 class SAEDatasetConf(DatasetConf):
     batch_size: int = 10
@@ -80,7 +69,10 @@ class SAEDatasetConf(DatasetConf):
 class SaeKnockoffRunnerConf(RunnerConf):
     name: Runner = Runner.SAE_KNOCKOFF
     mode: RunnerMode = RunnerMode.TRAIN
-
+    lr: Optional[float] = field(default_factory=lambda: 1e-4)
+    warmup_steps: int = 1
+    eps: float = 1e-8
+    precision: Precision = Precision.BFLOAT16
 
 @dataclass
 class SAEFeatureConf(FeatureConf):
@@ -90,7 +82,7 @@ class SAEFeatureConf(FeatureConf):
     patterns: List[FeaturePattern] = field(
         default_factory=lambda: [
             # FeaturePattern.DET_DECODER_MHA,
-            # FeaturePattern.DET_DECODER_MLP,
+            FeaturePattern.DET_DECODER_MLP,
             FeaturePattern.DET_DECODER_RESID_MHA,
             FeaturePattern.DET_DECODER_RESID_MLP,
             FeaturePattern.IO,

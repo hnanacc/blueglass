@@ -128,12 +128,14 @@ class SaeKnockoff(SAERunner):
         use_all_layers = self.conf.layer_knock_off.use_all_layers
 
         def run_all_patchers():
+            
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             records_patcher = {}
             if knockoff is True:
-                prefix = "Knockoff_SAE_Patcher/ALL_Patchers"
+                prefix = f"Knockoff_{knockoff_range_fmt}/SAE_Patcher/ALL_Patchers"
             else:
-                prefix = "Vanilla_SAE_Patcher/ALL_Patchers"
+                prefix = f"Vanilla_SAE_Patcher/ALL_Patchers"
             self.feature_model.conf = self.conf
             dm = FeatureInterceptor(
                 self.conf, self.feature_model, patchers_per_name=built_patchers
@@ -153,10 +155,11 @@ class SaeKnockoff(SAERunner):
 
         def run_individual_patchers():
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             if knockoff is True:
-                prefix = "Knockoff_SAE_Patcher"
+                prefix = f"Knockoff_{knockoff_range_fmt}/SAE_Patcher"
             else:
-                prefix = "Vanilla_SAE_Patcher"
+                prefix = f"Vanilla_SAE_Patcher"
             self.feature_model.conf = self.conf
             for name, _single_patcher in built_patchers.items():
                 records_patcher = {}
@@ -205,6 +208,7 @@ class SaeKnockoff(SAERunner):
 
         def run_column_reduction_all_layers():
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             self.conf.layer_knock_off.active_knockoff_layer_name = "all"
             # self.conf.layer_knock_off.active_use_all_layers_mode = True
             self.feature_model.conf = self.conf
@@ -217,11 +221,12 @@ class SaeKnockoff(SAERunner):
             for metric in _records_patcher:
                 for submetric in _records_patcher[metric]:
                     records_dict[
-                        f"FeatModel_KnockfOff/All_Layers/{metric}_{submetric}"
+                        f"KnockfOff_{knockoff_range_fmt}/FeatModel/All_Layers/{metric}_{submetric}"
                     ] = _records_patcher[metric][submetric]
 
         def run_column_reduction_per_layer():
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             for name, _ in built_patchers.items():
                 if self.conf.layer_knock_off.knockoff_layer_selection.get(name, False):
                     self.conf.layer_knock_off.active_knockoff_layer_name = name
@@ -237,7 +242,7 @@ class SaeKnockoff(SAERunner):
                     for metric in _records_patcher:
                         for submetric in _records_patcher[metric]:
                             records_dict[
-                                f"FeatModel_KnockfOff/{name}/{metric}_{submetric}"
+                                f"KnockfOff_{knockoff_range_fmt}/FeatModel/{name}/{metric}_{submetric}"
                             ] = _records_patcher[metric][submetric]
 
         if use_all_layers is True:
@@ -298,16 +303,16 @@ class SaeKnockoff(SAERunner):
             vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
 
             # self.vanilla_metrics = {**vanilla_records_patcher, **test_patcher}
-
+            knockoff_range_fmt = "_".join(str(x) for x in self.conf.layer_knock_off.active_knockoff_range)
             for metric in vanilla_records_patcher.keys():
                 for _metric_ in vanilla_records_patcher[metric].keys():
-                    _records_patcher[f"vanilla/{metric}_{_metric_}"] = (
+                    _records_patcher[f"vanilla/{knockoff_range_fmt}_{metric}_{_metric_}"] = (
                         vanilla_records_patcher[metric][_metric_]
                     )
             vanilla_metrics = {**_records_patcher}
             self.vanilla_metrics = vanilla_metrics
-        # else:
-        #     records_patcher.update(self.vanilla_metrics)
+        else:
+            records_patcher.update(self.vanilla_metrics)
         
         logger.info("Evaluation for detection in VLM using sae patchers and knockoff ranges.")
         infer_patcher = self.infer_with_sae_knockoff_patchers(knockoff=True)
@@ -337,7 +342,7 @@ class SaeKnockoff(SAERunner):
 
             if self.infer_step == 0:
                 records_dict["infer_metrics"].update(records_column_ranks)
-            self.register_infer_metrics(records_dict, mode="infer")
+            self.register_infer_metrics(records_dict, metric_mode="infer")
 
             del records_dict
             torch.cuda.empty_cache()
@@ -348,7 +353,7 @@ class SaeKnockoff(SAERunner):
                 )
         self.vanilla_metrics = None
 
-    def register_infer_metrics(self, records_dict: Dict[str, Any], mode: str = "infer") -> None:
+    def register_infer_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "infer") -> None:
         
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
@@ -365,7 +370,7 @@ class SaeKnockoff(SAERunner):
         ), "comm error! unexpected data format."
 
         extras_dict, losses_dict, metric_dict, visual_metric_dict = (
-            self.process_records(gathered_records_dict, mode=mode)
+            self.process_records(gathered_records_dict, metric_mode=metric_mode)
         )
 
         if self.conf.experiment.use_wandb:
@@ -382,7 +387,7 @@ class SaeKnockoff(SAERunner):
                         table, x="start", y="end", title="Knockoff Percentile Ranges"
                     ),
                 },
-                step=self.step + self.infer_step,
+                step=self.step,
             )
 
         logger.info(
@@ -409,7 +414,7 @@ class SaeKnockoff(SAERunner):
                 random_state=42,
             )
             column_rank_indices[name] = ranks.tolist()
-            records[f"visual_metrics/column_ranks/{name}"] = fig
+            records[f"visual_metrics_infer/column_ranks/{name}"] = fig
             plt.close(fig)
         self.column_rank_indices = column_rank_indices
         self.conf.layer_knock_off.column_ranks = column_rank_indices
@@ -520,13 +525,12 @@ class SaeKnockoff(SAERunner):
 
             if self.step <= self.warmup_steps:
                 continue
+            records_dict["test_metrics"] = self.test()
+            self.register_metrics(records_dict, metric_mode="test")
 
             self.infer()
-            records_dict["test_metrics"] = self.test()
+            
             self.model = self.model.train()
-
-            self.register_metrics(records_dict)
-
             self.checkpoint()
 
             del records_dict
@@ -586,7 +590,7 @@ class SaeKnockoff(SAERunner):
 
         return {**records_feature, **records_patcher, **records_visuals}
 
-    def register_metrics(self, records_dict: Dict[str, Any], mode: str = "test") -> None:
+    def register_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "test") -> None:
         if self.step % self.logs_period != 0:
             return None
 
@@ -605,7 +609,7 @@ class SaeKnockoff(SAERunner):
         ), "comm error! unexpected data format."
 
         extras_dict, losses_dict, metric_dict, visual_metric_dict = (
-            self.process_records(gathered_records_dict, mode=mode)
+            self.process_records(gathered_records_dict, metric_mode=metric_mode)
         )
 
         assert (
