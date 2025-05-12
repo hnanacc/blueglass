@@ -1244,23 +1244,29 @@ class DeformableTransformerDecoderLayer(nn.Module):
         active_knockoff_layer_name = (
             blueglass_conf.layer_knock_off.active_knockoff_layer_name
         )
+        available_knockoff_layer_names = [a.value for a in blueglass_conf.feature.patterns]
         # self attention
         if self.self_attn is not None:
             # knockoff = True if active_knockoff_layer_name == FeaturePattern.DET_DECODER_SA_MHA.value else if active_knockoff_layer_name.lower() == "all" else False
+            target_patterns = [
+                FeaturePattern.DET_DECODER_SA_MHA,
+                FeaturePattern.DET_DECODER_MHA,
+                FeaturePattern.DET_DECODER_RESID_MHA,
+            ]
             knockoff = (
                 isinstance(active_knockoff_layer_name, str)
                 and (
                     active_knockoff_layer_name.lower() == "all"
                     or any(
                         pattern.value in active_knockoff_layer_name
-                        for pattern in [
-                            FeaturePattern.DET_DECODER_SA_MHA,
-                            FeaturePattern.DET_DECODER_MHA,
-                            FeaturePattern.DET_DECODER_RESID_MHA,
-                        ]
+                        for pattern in target_patterns
+                        )
+                    )
+                and any(
+                        pattern.value in available_knockoff_layer_names
+                        for pattern in target_patterns
                     )
                 )
-            )
             q = k = self.with_pos_embed(tgt, tgt_query_pos)
             tgt2, attn_pattern = self.self_attn(
                 q,
@@ -1323,19 +1329,24 @@ class DeformableTransformerDecoderLayer(nn.Module):
             tgt = tgt + self.catext_dropout(tgt2)
             tgt = self.catext_norm(tgt)
 
+        target_patterns = [
+                        FeaturePattern.DET_DECODER_SA_MHA,
+                        FeaturePattern.DET_DECODER_MHA,
+                        FeaturePattern.DET_DECODER_RESID_MHA,
+                    ]
         knockoff = (
             isinstance(active_knockoff_layer_name, str)
             and (
                 active_knockoff_layer_name.lower() == "all"
                 or any(
                     pattern.value in active_knockoff_layer_name
-                    for pattern in [
-                        FeaturePattern.DET_DECODER_SA_MHA,
-                        FeaturePattern.DET_DECODER_MHA,
-                        FeaturePattern.DET_DECODER_RESID_MHA,
-                    ]
+                    for pattern in target_patterns
+                    )
                 )
-            )
+                and any(
+                    pattern.value in available_knockoff_layer_names
+                    for pattern in target_patterns
+                )
         )
         tgt2 = self.cross_attn(
             query=self.with_pos_embed(tgt, tgt_query_pos).transpose(0, 1),
@@ -1371,17 +1382,22 @@ class DeformableTransformerDecoderLayer(nn.Module):
         name = f"{layer_name}.{pattern_name.value}.{subpattern_name.value}"
         tgt = intercept_manager().patcher(name).patch(name, tgt)
 
+        target_patterns = [
+                        FeaturePattern.DET_DECODER_MLP,
+                        FeaturePattern.DET_DECODER_RESID_MLP,
+                        ]
         knockoff = (
             isinstance(active_knockoff_layer_name, str)
             and (
                 active_knockoff_layer_name.lower() == "all"
                 or any(
                     pattern.value in active_knockoff_layer_name
-                    for pattern in [
-                        FeaturePattern.DET_DECODER_MLP,
-                        FeaturePattern.DET_DECODER_RESID_MLP,
-                    ]
-                )
+                    for pattern in target_patterns
+                    )
+            )
+            and any(
+                    pattern.value in available_knockoff_layer_names
+                    for pattern in target_patterns
             )
         )
 

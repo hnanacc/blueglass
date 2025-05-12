@@ -296,9 +296,6 @@ class SaeKnockoff(SAERunner):
             ev = self.build_evaluator(self.conf, runner_mode="infer")
             logger.info("Evaluation for detection in VLM (vanilla).")
             vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
-            
-            logger.info("Evaluation for detection in VLM with sae patchers (vanilla).")
-            test_patcher = self.infer_with_sae_knockoff_patchers()
 
             # self.vanilla_metrics = {**vanilla_records_patcher, **test_patcher}
 
@@ -307,12 +304,10 @@ class SaeKnockoff(SAERunner):
                     _records_patcher[f"vanilla/{metric}_{_metric_}"] = (
                         vanilla_records_patcher[metric][_metric_]
                     )
-            vanilla_metrics = {**_records_patcher, **test_patcher}
+            vanilla_metrics = {**_records_patcher}
             self.vanilla_metrics = vanilla_metrics
         # else:
         #     records_patcher.update(self.vanilla_metrics)
-
-
         
         logger.info("Evaluation for detection in VLM using sae patchers and knockoff ranges.")
         infer_patcher = self.infer_with_sae_knockoff_patchers(knockoff=True)
