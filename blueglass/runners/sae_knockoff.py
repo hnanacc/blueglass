@@ -590,3 +590,68 @@ class SaeKnockoff(SAERunner):
             records_visuals = self.visualise_metrics()
 
         return {**records_feature, **records_patcher, **records_visuals}
+
+    def register_metrics(self, records_dict: Dict[str, Any], mode: str = "test") -> None:
+        if self.step % self.logs_period != 0:
+            return None
+
+        records_dict = {
+            k: v.detach().cpu().item() if isinstance(v, Tensor) else v
+            for k, v in records_dict.items()
+        }
+
+        gathered_records_dict = comm.gather(records_dict)
+
+        if not comm.is_main_process():
+            return
+
+        assert is_comm_dict(
+            gathered_records_dict
+        ), "comm error! unexpected data format."
+
+        extras_dict, losses_dict, metric_dict, visual_metric_dict = (
+            self.process_records(gathered_records_dict, mode=mode)
+        )
+
+        assert (
+            "losses_reduced" in losses_dict
+        ), "expected losses in losses_dict at every publish step."
+
+        if not np.isfinite(losses_dict["losses_reduced"]):
+            raise FloatingPointError(
+                f"Loss became infinite or NaN at iteration: {self.step}!\n"
+                f"Losses: {losses_dict}"
+            )
+
+        if "metric_fitness" in metric_dict and self.best_tracker.is_best(
+            metric_dict["metric_fitness"], self.step
+        ):
+            self.checkpoint(force_save=True)
+        else:
+            metric_dict["metric_fitness"] = self.best_tracker.best()
+
+        lrs_dict = {
+            f"lr/pg_{i}": group["lr"]
+            for i, group in enumerate(self.optimizer.param_groups)
+        }
+        if self.conf.experiment.use_wandb:
+            if len(visual_metric_dict) > 0:
+                visual_metric_dict = {
+                    k: wandb.Image(v) for k, v in visual_metric_dict.items()
+                }
+            wandb.log(
+                {
+                    **losses_dict,
+                    **lrs_dict,
+                    **metric_dict,
+                    **extras_dict,
+                    **visual_metric_dict,
+                },
+                step=self.step,
+            )
+
+        logger.info(
+            f"iter: {self.step:0>6}/{self.max_steps}. "
+            f"metric_fitness: {metric_dict['metric_fitness']:.4f}. "
+            f"losses_reduced: {losses_dict['losses_reduced']:.4f}. "
+        )

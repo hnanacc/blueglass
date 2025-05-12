@@ -199,7 +199,18 @@ class AutoEncoder(nn.Module):
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _norm_l0(self, interims: Tensor) -> Tensor:
-        return (interims > 0).float().sum(dim=-1).mean()
+        total = 0.0
+        count = 0
+        chunk_size = 512  # Adjust based on memory availability
+
+        for i in range(0, interims.shape[0], chunk_size):
+            chunk = interims[i : i + chunk_size]
+            active_counts = torch.sum(torch.gt(chunk, 0), dim=1)  # [chunk_size]
+            total += active_counts.sum().item()
+            count += chunk.size(0)
+
+        mean_active_latents = torch.tensor(total / count)
+        return mean_active_latents
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _norm_l1(self, interims: Tensor) -> Tensor:
@@ -207,19 +218,42 @@ class AutoEncoder(nn.Module):
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _dense_pct(self) -> Tensor:
-        return (
-            self.latents_fire_count > self.threshold_dense
-        ).sum() / self.feature_seen_count.float()
+        dense_count = 0
+        chunk_size = 512  # Tune based on memory, 8K is safe for most cases
+        num_latents = self.latents_fire_count.shape[0]
+
+        for i in range(0, num_latents, chunk_size):
+            chunk = self.latents_fire_count[i : i + chunk_size]
+            dense_count += torch.count_nonzero(torch.gt(chunk, self.threshold_dense)).item()
+
+        density_ratio = dense_count / self.feature_seen_count.float()
+        return density_ratio
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _dead_pct(self) -> Tensor:
-        num_dead = (self.latents_dead_since > self.threshold_dead).sum()
-        return (num_dead / float(self.latents_dim)) * 100
+        dead_count = 0
+        chunk_size = 512  # Tune based on memory, 8K is safe for most cases
+        num_latents = self.latents_dead_since.shape[0]
+
+        for i in range(0, num_latents, chunk_size):
+            chunk = self.latents_dead_since[i : i + chunk_size]
+            dead_count += torch.count_nonzero(torch.gt(chunk, self.threshold_dead)).item()
+
+        dead_ratio = dead_count / self.feature_seen_count.float()
+        return dead_ratio
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _min_dead_pct(self) -> Tensor:
-        num_dead = (self.latents_dead_since > self.min_threshold_dead).sum()
-        return (num_dead / float(self.latents_dim)) * 100
+        dead_count = 0
+        chunk_size = 512  # Tune based on memory, 8K is safe for most cases
+        num_latents = self.latents_dead_since.shape[0]
+
+        for i in range(0, num_latents, chunk_size):
+            chunk = self.latents_dead_since[i : i + chunk_size]
+            dead_count += torch.count_nonzero(torch.gt(chunk, self.min_threshold_dead)).item()
+
+        dead_ratio = dead_count / self.feature_seen_count.float()
+        return dead_ratio
 
     @torch.no_grad()
     def update_features_metrics(self, true_features: Tensor, _: Tensor):
@@ -232,7 +266,12 @@ class AutoEncoder(nn.Module):
 
     @torch.no_grad()
     def update_interims_metrics(self, interims: Tensor):
-        cur_latents_fire_cnt = (interims > 0).sum(dim=0)
+        cur_latents_fire_cnt = torch.zeros(interims.shape[1], device=interims.device)
+        chunk_size = 512  # You can adjust this based on available memory
+        for i in range(0, interims.shape[0], chunk_size):
+            chunk = interims[i : i + chunk_size]
+            cur_latents_fire_cnt += torch.sum(torch.gt(chunk, 0), dim=0)
+
         comm.all_reduce(cur_latents_fire_cnt)
         self.latents_fire_count += cur_latents_fire_cnt
 

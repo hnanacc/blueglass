@@ -208,10 +208,10 @@ class Runner:
             for i, group in enumerate(self.optimizer.param_groups)
         }
         if self.conf.experiment.use_wandb:
-            if len(visual_metric_dict) > 0:
-                visual_metric_dict = {
-                    k: wandb.Image(v) for k, v in visual_metric_dict.items()
-                }
+            # if len(visual_metric_dict) > 0:
+            #     visual_metric_dict = {
+            #         k: wandb.Image(v) for k, v in visual_metric_dict.items()
+            #     }
             wandb.log(
                 {
                     **losses_dict,
