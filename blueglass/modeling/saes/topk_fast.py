@@ -220,11 +220,13 @@ class TopKFast(AutoEncoder):
         """
 
         loss_sparsity = self._loss_sparsity(interims)
+        loss_sparsity_l0 = self._loss_sparsity_l0(interims)
         loss_reconstr = self._loss_reconstr(true_features, pred_features)
+        loss_reconstr_fvu = self._loss_reconstr_fvu(true_features, pred_features)
         loss_topk_aux = self._loss_topk_aux(true_features, pred_features, interims, ctx)
 
         return {
-            "loss_combined": loss_reconstr + loss_sparsity + loss_topk_aux,
+            "loss_combined": loss_reconstr_fvu + loss_sparsity_l0 + loss_topk_aux,
             "loss_reconstr": loss_reconstr,
             "loss_sparsity": loss_sparsity,
             "loss_topk_aux": loss_topk_aux,

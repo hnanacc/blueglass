@@ -77,7 +77,6 @@ class SaeKnockoff(SAERunner):
 
         self.device = DEVICE
         self.feature_model = self._frozen(build_model(conf))
-        self.feature_model = self.feature_model
         self.vanilla_metrics = None
         self.column_rank_indices = None
 
@@ -98,11 +97,11 @@ class SaeKnockoff(SAERunner):
 
     def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
         d = self.build_infer_dataloader(self.conf)
-        m = self.model.eval().to(self.device)
-        return d, m
+        self.model = self.model.eval().to(self.device)
+        return d
+
 
     def _build_patchers(self, knockoff=False) -> Dict[str, Patcher]:
-
         model = maybe_strip_ddp(self.model)
         model = copy.deepcopy(model)
         if knockoff is True:
@@ -122,13 +121,12 @@ class SaeKnockoff(SAERunner):
 
     def infer_with_sae_knockoff_patchers(self, knockoff=False) -> Dict[str, Any]:
         records_dict = {}
-        built_patchers = self._build_patchers(knockoff=knockoff)
-        ds = self.dataloader
+        ds = self.infer_dataloader
         self.conf.layer_knock_off.knockoff_feature_model = False
         use_all_layers = self.conf.layer_knock_off.use_all_layers
 
         def run_all_patchers():
-            
+            built_patchers = self._build_patchers(knockoff=knockoff)
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
             knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             records_patcher = {}
@@ -136,9 +134,10 @@ class SaeKnockoff(SAERunner):
                 prefix = f"Knockoff_{knockoff_range_fmt}/SAE_Patcher/ALL_Patchers"
             else:
                 prefix = f"Vanilla_SAE_Patcher/ALL_Patchers"
-            self.feature_model.conf = self.conf
+            feature_model = copy.deepcopy(self.feature_model)
+            feature_model.conf = self.conf
             dm = FeatureInterceptor(
-                self.conf, self.feature_model, patchers_per_name=built_patchers
+                self.conf, feature_model, patchers_per_name=built_patchers
             )
             ev = self.build_evaluator(self.conf, runner_mode="infer")
             logger.info(
@@ -154,19 +153,21 @@ class SaeKnockoff(SAERunner):
                     ][submetric]
 
         def run_individual_patchers():
+            built_patchers = self._build_patchers(knockoff=knockoff)
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
             knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             if knockoff is True:
                 prefix = f"Knockoff_{knockoff_range_fmt}/SAE_Patcher"
             else:
                 prefix = f"Vanilla_SAE_Patcher"
-            self.feature_model.conf = self.conf
+            feature_model = copy.deepcopy(self.feature_model)
+            feature_model.conf = self.conf
             for name, _single_patcher in built_patchers.items():
                 records_patcher = {}
                 if self.conf.layer_knock_off.knockoff_layer_selection.get(name, False):
                     dm = FeatureInterceptor(
                         self.conf,
-                        self.feature_model,
+                        feature_model,
                         patchers_per_name={name: _single_patcher},
                     )
                     ev = self.build_evaluator(self.conf, runner_mode="infer")
@@ -199,10 +200,10 @@ class SaeKnockoff(SAERunner):
 
         # update blueglass config with the current knockoff relevant information
         records_dict = {}
-        model = maybe_strip_ddp(self.vanilla_sae_model)
+        model = maybe_strip_ddp(self.model)
         sae_pactchers = model.eval().sae_per_name.keys()
         built_patchers = self._build_patchers()
-        ds = self.dataloader
+        ds = self.infer_dataloader
         use_all_layers = self.conf.layer_knock_off.use_all_layers
         self.conf.layer_knock_off.knockoff_feature_model = True
 
@@ -211,8 +212,8 @@ class SaeKnockoff(SAERunner):
             knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             self.conf.layer_knock_off.active_knockoff_layer_name = "all"
             # self.conf.layer_knock_off.active_use_all_layers_mode = True
-            self.feature_model.conf = self.conf
             dm = copy.deepcopy(self.feature_model)
+            dm.conf = self.conf
             ev = self.build_evaluator(self.conf, runner_mode="infer")
             logger.info(
                 f"Evaluation for detection in VLM with knockoff range in FeatModel: {active_knockoff_range} using all sae's column ranks: {built_patchers.keys()}."
@@ -231,9 +232,9 @@ class SaeKnockoff(SAERunner):
                 if self.conf.layer_knock_off.knockoff_layer_selection.get(name, False):
                     self.conf.layer_knock_off.active_knockoff_layer_name = name
                     # self.conf.layer_knock_off.active_use_all_layers_mode = True
-                    self.feature_model.conf = self.conf
 
                     dm = copy.deepcopy(self.feature_model)
+                    dm.conf = self.conf
                     ev = self.build_evaluator(self.conf, runner_mode="infer")
                     logger.info(
                         f"Evaluation for detection in VLM with knockoff range in FeatModel: {active_knockoff_range} using sae's column ranks: {name}."
@@ -254,14 +255,14 @@ class SaeKnockoff(SAERunner):
         elif use_all_layers == "both":
             run_column_reduction_all_layers()
             run_column_reduction_per_layer()
-
         else:
             raise ValueError(f"Invalid value for use_all_layers: {use_all_layers}")
+        self.conf.layer_knock_off.knockoff_feature_model = False
         return records_dict
 
     def resolve_enabled_sae_patchers(self) -> None:
         knockoff_layer_selection = self.conf.layer_knock_off.knockoff_layer_selection
-        model = self.vanilla_sae_model
+        model = self.model
         model = maybe_strip_ddp(model)
         sae_per_name = [
             model.transform_name(name, reverse=True)
@@ -289,30 +290,7 @@ class SaeKnockoff(SAERunner):
         Return the output records for all three runs.
         """
 
-        records_patcher = {}
-        if self.vanilla_metrics is None:
-            _records_patcher = {}
-            self.conf.layer_knock_off.knockoff_feature_model = False
-            self.feature_model.conf = self.conf
-            """
-            running vanilla evaluation only once for the entire run
-            """
-            ds = self.dataloader
-            ev = self.build_evaluator(self.conf, runner_mode="infer")
-            logger.info("Evaluation for detection in VLM (vanilla).")
-            vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
-
-            # self.vanilla_metrics = {**vanilla_records_patcher, **test_patcher}
-            knockoff_range_fmt = "_".join(str(x) for x in self.conf.layer_knock_off.active_knockoff_range)
-            for metric in vanilla_records_patcher.keys():
-                for _metric_ in vanilla_records_patcher[metric].keys():
-                    _records_patcher[f"vanilla/{knockoff_range_fmt}_{metric}_{_metric_}"] = (
-                        vanilla_records_patcher[metric][_metric_]
-                    )
-            vanilla_metrics = {**_records_patcher}
-            self.vanilla_metrics = vanilla_metrics
-        else:
-            records_patcher.update(self.vanilla_metrics)
+        records_patcher, infer_patcher, infer_knockoff = {}, {}, {}
         
         logger.info("Evaluation for detection in VLM using sae patchers and knockoff ranges.")
         infer_patcher = self.infer_with_sae_knockoff_patchers(knockoff=True)
@@ -321,17 +299,15 @@ class SaeKnockoff(SAERunner):
         infer_knockoff = self.infer_with_knockoff_in_feat_model()
 
         records_patcher["infer_metrics"] = {
-            **self.vanilla_metrics,
             **infer_patcher,
             **infer_knockoff,
         }
         return records_patcher
 
-    def infer(self) -> None:
+    def infer_knockoff(self) -> None:
         if self.step % self.eval_knockoff_period != 0:
             return None
-        self.dataloader, self.vanilla_sae_model = self.initialize_infer_attrs()
-        self.resolve_enabled_sae_patchers()
+        self.infer_dataloader = self.initialize_infer_attrs()
         records_column_ranks = self.sae_decoder_column_rank()
 
         knockoff_range = self.conf.layer_knock_off.knockoff_range
@@ -396,7 +372,7 @@ class SaeKnockoff(SAERunner):
         )
 
     def sae_decoder_column_rank(self) -> None:
-        model = copy.deepcopy(self.vanilla_sae_model)
+        model = copy.deepcopy(self.model)
         model = maybe_strip_ddp(model)
         records = {}
         column_rank_indices = {}
@@ -519,8 +495,9 @@ class SaeKnockoff(SAERunner):
         ) = self.initialize_train_attrs()
         self.best_tracker = BestTracker()
         self.grad_scaler = GradScaler("cuda")
-
+        
         for self.step, data in zip(range(1, self.max_steps + 1), self.dataloader):
+            self.resolve_enabled_sae_patchers()
             records_dict = self.run_step(data)
 
             if self.step <= self.warmup_steps:
@@ -528,7 +505,7 @@ class SaeKnockoff(SAERunner):
             records_dict["test_metrics"] = self.test()
             self.register_metrics(records_dict, metric_mode="test")
 
-            self.infer()
+            self.infer_knockoff()
             
             self.model = self.model.train()
             self.checkpoint()

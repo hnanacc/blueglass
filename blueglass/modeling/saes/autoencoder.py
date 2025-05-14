@@ -193,9 +193,17 @@ class AutoEncoder(nn.Module):
             self.coeff_reconstr
             * (pred_features.float() - true_features.float()).pow(2).mean()
         )
+        
+    def _loss_reconstr_fvu(self, true_features: Tensor, pred_features: Tensor) -> Tensor:
+        mse = F.mse_loss(pred_features.float(), true_features.float())
+        var = true_features.float().var(unbiased=False)  # Match default in `.var()` for consistency
+        return self.coeff_reconstr * (mse / var)
 
     def _loss_sparsity(self, interims: Tensor) -> Tensor:
         return self.coeff_sparsity * self._norm_l1(interims)
+    
+    def _loss_sparsity_l0(self, interims: Tensor) -> Tensor:
+        return self.coeff_sparsity * self._norm_l0(interims)
 
     @AvoidCUDAOOM.retry_if_cuda_oom
     def _norm_l0(self, interims: Tensor) -> Tensor:
