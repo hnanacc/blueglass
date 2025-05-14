@@ -77,7 +77,6 @@ class SaeKnockoff(SAERunner):
 
         self.device = DEVICE
         self.feature_model = self._frozen(build_model(conf))
-        self.vanilla_metrics = None
         self.column_rank_indices = None
 
         assert isinstance(self.precision, torch.dtype), "Invalid precision."
@@ -101,9 +100,9 @@ class SaeKnockoff(SAERunner):
         return d
 
 
-    def _build_patchers(self, knockoff=False) -> Dict[str, Patcher]:
-        model = maybe_strip_ddp(self.model)
-        model = copy.deepcopy(model)
+    def _build_patchers_with_knockoff(self, knockoff=False) -> Dict[str, Patcher]:
+        model = copy.deepcopy(self.model) 
+        model = maybe_strip_ddp(model)
         if knockoff is True:
             for name, sae in model.eval().sae_per_name.items():
                 name = GroupedSAE.transform_name(name, reverse=True)
@@ -126,7 +125,7 @@ class SaeKnockoff(SAERunner):
         use_all_layers = self.conf.layer_knock_off.use_all_layers
 
         def run_all_patchers():
-            built_patchers = self._build_patchers(knockoff=knockoff)
+            built_patchers = self._build_patchers_with_knockoff(knockoff=knockoff)
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
             knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             records_patcher = {}
@@ -153,7 +152,7 @@ class SaeKnockoff(SAERunner):
                     ][submetric]
 
         def run_individual_patchers():
-            built_patchers = self._build_patchers(knockoff=knockoff)
+            built_patchers = self._build_patchers_with_knockoff(knockoff=knockoff)
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
             knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             if knockoff is True:
@@ -200,9 +199,9 @@ class SaeKnockoff(SAERunner):
 
         # update blueglass config with the current knockoff relevant information
         records_dict = {}
-        model = maybe_strip_ddp(self.model)
+        model = copy.deepcopy(maybe_strip_ddp(self.model))
         sae_pactchers = model.eval().sae_per_name.keys()
-        built_patchers = self._build_patchers()
+        built_patchers = self._build_patchers_with_knockoff()
         ds = self.infer_dataloader
         use_all_layers = self.conf.layer_knock_off.use_all_layers
         self.conf.layer_knock_off.knockoff_feature_model = True
@@ -213,7 +212,7 @@ class SaeKnockoff(SAERunner):
             self.conf.layer_knock_off.active_knockoff_layer_name = "all"
             # self.conf.layer_knock_off.active_use_all_layers_mode = True
             dm = copy.deepcopy(self.feature_model)
-            dm.conf = self.conf
+            dm.conf = copy.deepcopy(self.conf)
             ev = self.build_evaluator(self.conf, runner_mode="infer")
             logger.info(
                 f"Evaluation for detection in VLM with knockoff range in FeatModel: {active_knockoff_range} using all sae's column ranks: {built_patchers.keys()}."
@@ -234,7 +233,7 @@ class SaeKnockoff(SAERunner):
                     # self.conf.layer_knock_off.active_use_all_layers_mode = True
 
                     dm = copy.deepcopy(self.feature_model)
-                    dm.conf = self.conf
+                    dm.conf = copy.deepcopy(self.conf)
                     ev = self.build_evaluator(self.conf, runner_mode="infer")
                     logger.info(
                         f"Evaluation for detection in VLM with knockoff range in FeatModel: {active_knockoff_range} using sae's column ranks: {name}."
@@ -262,7 +261,7 @@ class SaeKnockoff(SAERunner):
 
     def resolve_enabled_sae_patchers(self) -> None:
         knockoff_layer_selection = self.conf.layer_knock_off.knockoff_layer_selection
-        model = self.model
+        model = copy.deepcopy(self.model)
         model = maybe_strip_ddp(model)
         sae_per_name = [
             model.transform_name(name, reverse=True)
@@ -327,7 +326,6 @@ class SaeKnockoff(SAERunner):
                 logger.info(
                     f"Processed at {self.step}: {self.infer_step+1} / {len(self.conf.layer_knock_off.knockoff_range)}"
                 )
-        self.vanilla_metrics = None
 
     def register_infer_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "infer") -> None:
         
@@ -495,18 +493,18 @@ class SaeKnockoff(SAERunner):
         ) = self.initialize_train_attrs()
         self.best_tracker = BestTracker()
         self.grad_scaler = GradScaler("cuda")
-        
+        self.resolve_enabled_sae_patchers()
+ 
         for self.step, data in zip(range(1, self.max_steps + 1), self.dataloader):
-            self.resolve_enabled_sae_patchers()
+            
             records_dict = self.run_step(data)
 
             if self.step <= self.warmup_steps:
                 continue
-            records_dict["test_metrics"] = self.test()
-            self.register_metrics(records_dict, metric_mode="test")
 
             self.infer_knockoff()
-            
+            records_dict["test_metrics"] = self.test()
+            self.register_metrics(records_dict, metric_mode="test")
             self.model = self.model.train()
             self.checkpoint()
 
@@ -559,6 +557,7 @@ class SaeKnockoff(SAERunner):
             Executes inference for all ad-hoc models registered with the base model
             """
             # Step 2a. Measure metrics with patcher on test data and feature model.
+            self.conf.layer_knock_off.knockoff_feature_model = False
             test_patcher = self.patcher_test()
             records_patcher = records_patcher | test_patcher
 

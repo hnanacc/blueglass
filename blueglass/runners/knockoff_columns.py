@@ -42,6 +42,7 @@ from blueglass.configs import BLUEGLASSConf, FeaturePattern
 from blueglass.third_party.detectron2.engine import create_ddp_model
 from blueglass.configs.utils import load_blueglass_from_wandb
 from blueglass.modeling.saes import GroupedSAE
+from blueglass.evaluation import SAEEvaluator
 from blueglass.runners.saes import SAERunner
 from blueglass.features import (
     FeatureDataset,
@@ -61,9 +62,7 @@ class KnockoffColumns(SAERunner):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__(conf)
         self.conf = conf
-        self.sae_conf = load_blueglass_from_wandb(
-            conf.sae.config_path, original_config=self.conf
-        )
+
         self.runner_name = str(self.conf.runner.name)
         self.runner_model_name = str(self.conf.model.name)
 
@@ -72,12 +71,13 @@ class KnockoffColumns(SAERunner):
         self.warmup_steps = conf.runner.warmup_steps
 
         self.eval_period = conf.runner.eval_period
+        self.eval_knockoff_period = conf.runner.eval_knockoff_period
         self.logs_period = conf.runner.logs_period
         self.precision = getattr(torch, conf.runner.precision)
 
         self.device = DEVICE
-        self.vanilla_feature_model = self._frozen(build_model(conf))
-
+        self.feature_model = self._frozen(build_model(conf))
+        self.feature_model = self.feature_model
         self.vanilla_metrics = None
         self.column_rank_indices = None
 
@@ -139,89 +139,8 @@ class KnockoffColumns(SAERunner):
                 f"Unexpected keys in state_dict: {unexpected_keys}."
             )
         return m
-
-    def process_records(
-        self, gathered_records: List[Dict[str, Any]]
-    ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
-        def strip_extra_prefix(key: str, substr: str) -> str:
-            parts = key.rsplit("/", 1)
-            if len(parts) == 2 and parts[1].startswith(substr):
-                parts[1] = parts[1].removeprefix(substr)
-            return "/".join(parts)
-
-        losses_dict, metrics_dict, visual_metrics_dict, extras_dict = {}, {}, {}, {}
-
-        reduced_records = defaultdict(list)
-
-        for records_per_rank in gathered_records:
-            for name, item in records_per_rank.items():
-                reduced_records[name].append(item)
-
-        reduced_records = {
-            name: item if "metric" in name else np.mean(item)
-            for name, item in reduced_records.items()
-        }
-
-        to_remove = []
-        for name, item in reduced_records.items():
-            if "loss" in name:
-                losses_dict[name] = item
-                continue
-
-            if "extra" in name:
-                extras_dict[name] = item
-                continue
-
-            if "metric" in name:
-                metrics_data = dict(ChainMap(*item))
-
-                # Split into visual and non-visual metrics
-
-                visual_metrics = {
-                    k: v for k, v in metrics_data.items() if "visual" in k
-                }
-                non_visual_metrics = {
-                    f"metrics/{k}": v
-                    for k, v in metrics_data.items()
-                    if "visual" not in k
-                }
-
-                # Update target dicts
-                visual_metrics_dict.update(visual_metrics)
-                metrics_dict.update(non_visual_metrics)
-                continue
-
-        extras_dict = {
-            f"extra/{strip_extra_prefix(k, 'extra_')}": v
-            for k, v in extras_dict.items()
-            if "visual" not in k
-        }
-
-        # Safely remove after iteration
-        for key in to_remove:
-            metrics_data.pop(key)
-
-        if len(losses_dict) > 0:
-            losses_dict["losses_reduced"] = sum(losses_dict.values())
-
-        if len(metrics_dict) > 0:
-            metrics_dict["metric_fitness"] = sum(metrics_dict.values())
-
-            # Computing metric fitness based on each sae
-            metric_fitness_dict = defaultdict(int)
-            non_visual_metrics_data = {
-                k: v for k, v in metrics_data.items() if "visual" not in k
-            }
-            for key, value in non_visual_metrics_data.items():
-
-                if isinstance(key, str) and "/" in key:
-                    prefix = key.split("/")[0]
-                    metric_fitness_dict[f"metric_reduced/{prefix}"] += value
-
-            metrics_dict = metrics_dict | metric_fitness_dict
-
-        return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
-
+	
+	
     def build_model(self, conf) -> nn.Module:
 
         model = self.build_saes_model()
@@ -259,18 +178,21 @@ class KnockoffColumns(SAERunner):
         use_all_layers = self.conf.layer_knock_off.use_all_layers
 
         def run_all_patchers():
+            
+            active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             records_patcher = {}
             if knockoff is True:
-                prefix = "Knockoff_SAE_Patcher/ALL_Patchers"
+                prefix = f"Knockoff_{knockoff_range_fmt}/SAE_Patcher/ALL_Patchers"
             else:
-                prefix = "Vanilla_SAE_Patcher/ALL_Patchers"
-            self.vanilla_feature_model.conf = self.conf
+                prefix = f"Vanilla_SAE_Patcher/ALL_Patchers"
+            self.feature_model.conf = self.conf
             dm = FeatureInterceptor(
-                self.conf, self.vanilla_feature_model, patchers_per_name=built_patchers
+                self.conf, self.feature_model, patchers_per_name=built_patchers
             )
             ev = self.build_evaluator(self.conf, runner_mode="infer")
             logger.info(
-                f"Evaluation for detection in VLM with patcher ({built_patchers.keys()})."
+                f"Evaluation for detection in VLM with knockoff range: {active_knockoff_range} and all patcher ({built_patchers.keys()})."
             )
             _records_patcher = inference_on_dataset(
                 dm, ds, ev, fwd_kwargs={"patch": True}
@@ -282,22 +204,24 @@ class KnockoffColumns(SAERunner):
                     ][submetric]
 
         def run_individual_patchers():
+            active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             if knockoff is True:
-                prefix = "Knockoff_SAE_Patcher"
+                prefix = f"Knockoff_{knockoff_range_fmt}/SAE_Patcher"
             else:
-                prefix = "Vanilla_SAE_Patcher"
-            self.vanilla_feature_model.conf = self.conf
+                prefix = f"Vanilla_SAE_Patcher"
+            self.feature_model.conf = self.conf
             for name, _single_patcher in built_patchers.items():
                 records_patcher = {}
                 if self.conf.layer_knock_off.knockoff_layer_selection.get(name, False):
                     dm = FeatureInterceptor(
                         self.conf,
-                        self.vanilla_feature_model,
+                        self.feature_model,
                         patchers_per_name={name: _single_patcher},
                     )
                     ev = self.build_evaluator(self.conf, runner_mode="infer")
                     logger.info(
-                        f"Evaluation for detection in VLM with patcher ({name})."
+                        f"Evaluation for detection in VLM with knockoff range: {active_knockoff_range} and patcher ({name})."
                     )
                     _records_patcher = inference_on_dataset(
                         dm, ds, ev, fwd_kwargs={"patch": True}
@@ -327,43 +251,48 @@ class KnockoffColumns(SAERunner):
         records_dict = {}
         model = maybe_strip_ddp(self.vanilla_sae_model)
         sae_pactchers = model.eval().sae_per_name.keys()
+        built_patchers = self._build_patchers()
         ds = self.dataloader
         use_all_layers = self.conf.layer_knock_off.use_all_layers
         self.conf.layer_knock_off.knockoff_feature_model = True
 
         def run_column_reduction_all_layers():
+            active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             self.conf.layer_knock_off.active_knockoff_layer_name = "all"
-            self.vanilla_feature_model.conf = self.conf
-            dm = copy.deepcopy(self.vanilla_feature_model)
+            # self.conf.layer_knock_off.active_use_all_layers_mode = True
+            self.feature_model.conf = self.conf
+            dm = copy.deepcopy(self.feature_model)
             ev = self.build_evaluator(self.conf, runner_mode="infer")
             logger.info(
-                f"Evaluation for detection in VLM with patcher ({sae_pactchers})."
+                f"Evaluation for detection in VLM with knockoff range in FeatModel: {active_knockoff_range} using all sae's column ranks: {built_patchers.keys()}."
             )
             _records_patcher = inference_on_dataset(dm, ds, ev)
             for metric in _records_patcher:
                 for submetric in _records_patcher[metric]:
                     records_dict[
-                        f"FeatModel_KnockfOff/AllLayers/{metric}_{submetric}"
+                        f"KnockfOff_{knockoff_range_fmt}/FeatModel/All_Layers/{metric}_{submetric}"
                     ] = _records_patcher[metric][submetric]
 
         def run_column_reduction_per_layer():
-            for name in sae_pactchers:
+            active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
+            knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
+            for name, _ in built_patchers.items():
                 if self.conf.layer_knock_off.knockoff_layer_selection.get(name, False):
                     self.conf.layer_knock_off.active_knockoff_layer_name = name
-                    self.vanilla_feature_model.conf = self.conf
+                    # self.conf.layer_knock_off.active_use_all_layers_mode = True
+                    self.feature_model.conf = self.conf
 
-                    dm = copy.deepcopy(self.vanilla_feature_model)
+                    dm = copy.deepcopy(self.feature_model)
                     ev = self.build_evaluator(self.conf, runner_mode="infer")
                     logger.info(
-                        f"Evaluation for detection in VLM with patcher ({name})."
+                        f"Evaluation for detection in VLM with knockoff range in FeatModel: {active_knockoff_range} using sae's column ranks: {name}."
                     )
-                    _records_patcher = inference_on_dataset(
-                        dm, ds, ev, fwd_kwargs={"blueglassconf": self.conf}
-                    )
+                    _records_patcher = inference_on_dataset(dm, ds, ev)
                     for metric in _records_patcher:
                         for submetric in _records_patcher[metric]:
                             records_dict[
-                                f"FeatModel_KnockfOff/{name}/{metric}_{submetric}"
+                                f"KnockfOff_{knockoff_range_fmt}/FeatModel/{name}/{metric}_{submetric}"
                             ] = _records_patcher[metric][submetric]
 
         if use_all_layers is True:
@@ -383,7 +312,7 @@ class KnockoffColumns(SAERunner):
     def resolve_enabled_sae_patchers(self) -> None:
         knockoff_layer_selection = self.conf.layer_knock_off.knockoff_layer_selection
         model = self.vanilla_sae_model
-
+        model = maybe_strip_ddp(model)
         sae_per_name = [
             model.transform_name(name, reverse=True)
             for name in model.eval().sae_per_name.keys()
@@ -393,7 +322,7 @@ class KnockoffColumns(SAERunner):
             for name in sae_per_name
             if int(name.split(".")[0].replace("layer_", "")) in knockoff_layer_selection
         }
-        active_patterns = {pattern.value for pattern in self.sae_conf.feature.patterns}
+        active_patterns = {pattern.value for pattern in self.conf.feature.patterns}
         new_knockoff_layer_selection = {
             name: any(p in name for p in active_patterns) for name in sae_per_name
         }
@@ -401,7 +330,7 @@ class KnockoffColumns(SAERunner):
             new_knockoff_layer_selection
         )
 
-    def run_step(self) -> Dict[str, Any]:
+    def infer_run_step(self) -> Dict[str, Any]:
         """
         Perform a single inference pass over the entire dataset using three models:
         (1) the vanilla model (run once),
@@ -414,42 +343,42 @@ class KnockoffColumns(SAERunner):
         if self.vanilla_metrics is None:
             _records_patcher = {}
             self.conf.layer_knock_off.knockoff_feature_model = False
-            self.vanilla_feature_model.conf = self.conf
+            self.feature_model.conf = self.conf
             """
             running vanilla evaluation only once for the entire run
             """
             ds = self.dataloader
             ev = self.build_evaluator(self.conf, runner_mode="infer")
             logger.info("Evaluation for detection in VLM (vanilla).")
-            vanilla_records_patcher = inference_on_dataset(
-                self.vanilla_feature_model, ds, ev
-            )
-            test_patcher = self.infer_with_sae_knockoff_patchers()
+            vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
 
             # self.vanilla_metrics = {**vanilla_records_patcher, **test_patcher}
-
+            knockoff_range_fmt = "_".join(str(x) for x in self.conf.layer_knock_off.active_knockoff_range)
             for metric in vanilla_records_patcher.keys():
                 for _metric_ in vanilla_records_patcher[metric].keys():
-                    _records_patcher[f"vanilla/{metric}_{_metric_}"] = (
+                    _records_patcher[f"vanilla/{knockoff_range_fmt}_{metric}_{_metric_}"] = (
                         vanilla_records_patcher[metric][_metric_]
                     )
-            vanilla_metrics = {**_records_patcher, **test_patcher}
+            vanilla_metrics = {**_records_patcher}
             self.vanilla_metrics = vanilla_metrics
-        # else:
-        #     records_patcher.update(self.vanilla_metrics)
-
+        else:
+            records_patcher.update(self.vanilla_metrics)
+        logger.info("Evaluation for detection in VLM using sae patchers and knockoff ranges.")
         infer_patcher = self.infer_with_sae_knockoff_patchers(knockoff=True)
 
+        logger.info("Evaluation for detection in VLM using knockoff ranges directly in the model.")
         infer_knockoff = self.infer_with_knockoff_in_feat_model()
 
-        records_patcher["metrics"] = {
+        records_patcher["infer_metrics"] = {
             **self.vanilla_metrics,
             **infer_patcher,
             **infer_knockoff,
         }
         return records_patcher
 
-    def infer(self) -> None:
+    def infer_knockoff(self) -> None:
+        if self.step % self.eval_knockoff_period != 0:
+            return None
         self.dataloader, self.vanilla_sae_model = self.initialize_infer_attrs()
         self.resolve_enabled_sae_patchers()
         records_column_ranks = self.sae_decoder_column_rank()
@@ -458,24 +387,23 @@ class KnockoffColumns(SAERunner):
         for self.infer_step, _knockoff_range in enumerate(knockoff_range):
             self.conf.layer_knock_off.active_knockoff_range = _knockoff_range
 
-            records_dict = self.run_step()
+            records_dict = self.infer_run_step()
 
             if self.infer_step == 0:
-                records_dict["metrics"].update(records_column_ranks)
-            self.register_metrics(records_dict)
+                records_dict["infer_metrics"].update(records_column_ranks)
+            self.register_infer_metrics(records_dict, metric_mode="infer")
 
             del records_dict
             torch.cuda.empty_cache()
             gc.collect()
             if self.infer_step % self.logs_period == 0:
                 logger.info(
-                    f"Processed {self.infer_step+1} / {len(self.conf.layer_knock_off.knockoff_range)}"
+                    f"Processed at {self.step}: {self.infer_step+1} / {len(self.conf.layer_knock_off.knockoff_range)}"
                 )
+        self.vanilla_metrics = None
 
-    def register_metrics(self, records_dict: Dict[str, Any]):
-        if self.infer_step % self.logs_period != 0:
-            return None
-
+    def register_infer_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "infer") -> None:
+        
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
@@ -491,7 +419,7 @@ class KnockoffColumns(SAERunner):
         ), "comm error! unexpected data format."
 
         extras_dict, losses_dict, metric_dict, visual_metric_dict = (
-            self.process_records(gathered_records_dict)
+            self.process_records(gathered_records_dict, metric_mode=metric_mode)
         )
 
         if self.conf.experiment.use_wandb:
@@ -508,7 +436,7 @@ class KnockoffColumns(SAERunner):
                         table, x="start", y="end", title="Knockoff Percentile Ranges"
                     ),
                 },
-                step=self.infer_step,
+                step=self.step,
             )
 
         logger.info(
@@ -535,7 +463,7 @@ class KnockoffColumns(SAERunner):
                 random_state=42,
             )
             column_rank_indices[name] = ranks.tolist()
-            records[f"visual_metrics/column_ranks/{name}"] = fig
+            records[f"visual_metrics_infer/column_ranks/{name}"] = fig
             plt.close(fig)
         self.column_rank_indices = column_rank_indices
         self.conf.layer_knock_off.column_ranks = column_rank_indices
@@ -630,6 +558,7 @@ class KnockoffColumns(SAERunner):
         # Slice the band
         return columns_ranks[start_idx:end_idx]
 
+
     def build_optimizer(
         self,
         conf: BLUEGLASSConf,
@@ -648,18 +577,78 @@ class KnockoffColumns(SAERunner):
         raise NotImplementedError(
             "Train dataloader is not supported for the decoder cluster runner."
         )
-
+	
     def train(self) -> None:
         raise NotImplementedError(
-            "Train method is not supported for the decoder cluster runner."
+            "Train method is not supported for the layer knockoff runner."
         )
 
     def test(self) -> None:
         raise NotImplementedError(
             "Test method is not supported for the layer knockoff runner."
         )
+	
+    def register_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "test") -> None:
+        if self.step % self.logs_period != 0:
+            return None
 
-    def checkpoint(self):
-        raise NotImplementedError(
-            "Checkpoint is not supported for the decoder cluster runner."
+        records_dict = {
+            k: v.detach().cpu().item() if isinstance(v, Tensor) else v
+            for k, v in records_dict.items()
+        }
+
+        gathered_records_dict = comm.gather(records_dict)
+
+        if not comm.is_main_process():
+            return
+
+        assert is_comm_dict(
+            gathered_records_dict
+        ), "comm error! unexpected data format."
+
+        extras_dict, losses_dict, metric_dict, visual_metric_dict = (
+            self.process_records(gathered_records_dict, metric_mode=metric_mode)
+        )
+
+        assert (
+            "losses_reduced" in losses_dict
+        ), "expected losses in losses_dict at every publish step."
+
+        if not np.isfinite(losses_dict["losses_reduced"]):
+            raise FloatingPointError(
+                f"Loss became infinite or NaN at iteration: {self.step}!\n"
+                f"Losses: {losses_dict}"
+            )
+
+        if "metric_fitness" in metric_dict and self.best_tracker.is_best(
+            metric_dict["metric_fitness"], self.step
+        ):
+            self.checkpoint(force_save=True)
+        else:
+            metric_dict["metric_fitness"] = self.best_tracker.best()
+
+        lrs_dict = {
+            f"lr/pg_{i}": group["lr"]
+            for i, group in enumerate(self.optimizer.param_groups)
+        }
+        if self.conf.experiment.use_wandb:
+            if len(visual_metric_dict) > 0:
+                visual_metric_dict = {
+                    k: wandb.Image(v) for k, v in visual_metric_dict.items()
+                }
+            wandb.log(
+                {
+                    **losses_dict,
+                    **lrs_dict,
+                    **metric_dict,
+                    **extras_dict,
+                    **visual_metric_dict,
+                },
+                step=self.step,
+            )
+
+        logger.info(
+            f"iter: {self.step:0>6}/{self.max_steps}. "
+            f"metric_fitness: {metric_dict['metric_fitness']:.4f}. "
+            f"losses_reduced: {losses_dict['losses_reduced']:.4f}. "
         )

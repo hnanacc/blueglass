@@ -47,10 +47,10 @@ class SAEVariantConf(SAEConf):
     variant: SAEVariant = SAEVariant.TOPK_FAST
     topk: int = 32
     config_path: str = (
-        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128.json"
+        "/home/squtub/github_repos/blueglass/trained_saes/new_L45.json"
     )
     checkpoint_path: str = (
-        "/home/squtub/github_repos/blueglass/trained_saes/config_exp128_4000.pth"
+        "/home/squtub/github_repos/blueglass/trained_saes/new_L45_500.pth"
     )
 
 
