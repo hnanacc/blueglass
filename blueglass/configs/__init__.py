@@ -41,7 +41,8 @@ from .defaults import (
 )
 
 
-from .modelstore import register_modelstores
+from .modelstore_benchmarks import register_modelstore
+from .modelstore_train import register_modelstore_train
 from .features import register_features
 from .probes import register_probes
 from .saes import register_saes
@@ -63,7 +64,8 @@ def register_all():
         except Exception as e:
             logger.warning(f"Failed to register {name} Hydra based config: {e}")
 
-    safe_register(register_modelstores, "Modelstore")
+    safe_register(register_modelstore, "Modelstore")
+    safe_register(register_modelstore_train, "Modelstore Train")
     safe_register(register_features, "Features")
     safe_register(register_probes, "Probes")
     safe_register(register_saes, "SAEs")

@@ -2,14 +2,13 @@
 # SPDX: Apache-2.0
 
 import torch
-from blueglass.utils.logger_utils import setup_blueglass_logger
 import numpy as np
-from typing import List, Dict, TypeGuard, Any
+from typing import Any, Dict, List, Tuple, TypeGuard
+from collections import defaultdict
+from blueglass.utils.logger_utils import setup_blueglass_logger
 from blueglass.configs import BLUEGLASSConf
 from blueglass.features import FeatureInterceptor, FeatureStorage
 from blueglass.runners import Runner
-from typing import Dict, Any, List, Tuple
-from collections import defaultdict
 from blueglass.third_party.detectron2.utils import comm
 
 
@@ -26,7 +25,7 @@ class LayersPatchRunner(Runner):
         self.model = FeatureInterceptor(conf, self.build_model(conf), {})
 
     def process_records(
-        self, gathered_records: List[Dict[str, Any]]
+        self, gathered_records: List[Dict[str, Any]], metric_mode: str = "test"
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
         losses_dict, metrics_dict = defaultdict(list), {}
 

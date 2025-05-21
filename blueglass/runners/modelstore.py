@@ -28,7 +28,7 @@ class ModelstoreRunner(Runner):
         return model
 
     def process_records(
-        self, gathered_records: List[Dict[str, Any]]
+        self, gathered_records: List[Dict[str, Any]], metric_mode: str = "test"
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
         def strip_extra_prefix(key: str, substr: str) -> str:
             parts = key.rsplit("/", 1)
@@ -68,7 +68,7 @@ class ModelstoreRunner(Runner):
                     k: v for k, v in metrics_data.items() if "visual" in k
                 }
                 non_visual_metrics = {
-                    f"metrics/{k}": v
+                    f"{metric_mode}_metrics/{k}": v
                     for k, v in metrics_data.items()
                     if "visual" not in k
                 }
@@ -92,7 +92,9 @@ class ModelstoreRunner(Runner):
             losses_dict["losses_reduced"] = sum(losses_dict.values())
 
         if len(metrics_dict) > 0:
-            metrics_dict["metric_fitness"] = sum(metrics_dict.values())
+            prefix = f"metrics_{metric_mode}_fitness"
+            metrics_dict[prefix] = sum(metrics_dict.values())
+            # metrics_dict[prefix] = sum([v for v in metrics_dict.values() if np.isfinite(v)])
 
             # Computing metric fitness based on each sae
             metric_fitness_dict = defaultdict(int)
@@ -116,7 +118,7 @@ class ModelstoreRunner(Runner):
 
         self.optimizer.zero_grad()
 
-        loss = records["loss/loss_combined"]
+        loss = records["loss"]
 
         assert isinstance(loss, Tensor), "received non-tensor loss."
 

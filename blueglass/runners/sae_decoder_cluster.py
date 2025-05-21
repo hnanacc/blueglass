@@ -95,7 +95,7 @@ class DecoderClusterRunner(SAERunner):
         )
 
     def process_records(
-        self, gathered_records: List[Dict[str, Any]]
+        self, gathered_records: List[Dict[str, Any]], metric_mode: str = "test"
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
         def strip_extra_prefix(key: str, substr: str) -> str:
             parts = key.rsplit("/", 1)
@@ -159,7 +159,8 @@ class DecoderClusterRunner(SAERunner):
             losses_dict["losses_reduced"] = sum(losses_dict.values())
 
         if len(metrics_dict) > 0:
-            metrics_dict["metric_fitness"] = sum(metrics_dict.values())
+            prefix = f"metrics_{metric_mode}_fitness"
+            metrics_dict[prefix] = sum([v for v in metrics_dict.values() if np.isfinite(v)])
 
             # Computing metric fitness based on each sae
             metric_fitness_dict = defaultdict(int)
@@ -271,7 +272,7 @@ class DecoderClusterRunner(SAERunner):
             torch.cuda.empty_cache()
             gc.collect()
 
-    def register_metrics(self, records_dict: Dict[str, Any]):
+    def register_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "test"):
         if self.step % self.logs_period != 0:
             return None
 
@@ -290,7 +291,7 @@ class DecoderClusterRunner(SAERunner):
         ), "comm error! unexpected data format."
 
         extras_dict, losses_dict, metric_dict, visual_metric_dict = (
-            self.process_records(gathered_records_dict)
+            self.process_records(gathered_records_dict, metric_mode=metric_mode)
         )
 
         assert (

@@ -11,24 +11,27 @@ from blueglass.configs import *
 
 @dataclass
 class ModelstoreDatasetConf(DatasetConf):
+    train_batch_size: int = 8
     test_batch_size: int = 8
 
 
 @dataclass
 class ModelStoreRunnerConf(RunnerConf):
     name: Runner = Runner.MODELSTORE
-    mode: RunnerMode = RunnerMode.TEST
+    mode: RunnerMode = RunnerMode.TRAIN
+    logs_period: int = 1
+    eval_period: int = 5
 
 
-def register_modelstores():
+def register_modelstore_train():
     cs = ConfigStore.instance()
 
-    for ds_name, _, ds_test, ev in DATASETS_AND_EVALS:
+    for ds_name, ds_train, ds_test, ev in DATASETS_AND_EVALS:
         cs.store(
-            f"modelstore.yolo.{ds_name}",
+            f"modelstore_train.yolo.{ds_name}",
             BLUEGLASSConf(
                 runner=ModelStoreRunnerConf(),
-                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                dataset=ModelstoreDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.YOLO,
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
@@ -39,10 +42,10 @@ def register_modelstores():
         )
 
         cs.store(
-            f"modelstore.mmdet_dinodetr.{ds_name}",
+            f"modelstore_train.mmdet_dinodetr.{ds_name}",
             BLUEGLASSConf(
                 runner=ModelStoreRunnerConf(),
-                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                dataset=ModelstoreDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.DINO_DETR,
                     conf_path=osp.join(
@@ -51,7 +54,7 @@ def register_modelstores():
                         f"dino-4scale_r50_improved_8xb2-12e_{ds_name}.py",
                     ),
                     checkpoint_path=osp.join(
-                        WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
+                        WEIGHTS_DIR, "mmdet", "dinodetr", f"dino-4scale_r50_improved_8xb2-12e_coco_20230818_162607-6f47a913.pth"
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
@@ -60,10 +63,10 @@ def register_modelstores():
         )
 
         cs.store(
-            f"modelstore.mmdet_detr.{ds_name}",
+            f"modelstore_train.mmdet_detr.{ds_name}",
             BLUEGLASSConf(
                 runner=ModelStoreRunnerConf(),
-                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                dataset=ModelstoreDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.DETR,
                     conf_path=osp.join(
@@ -72,7 +75,7 @@ def register_modelstores():
                         f"detr_r50_8xb2-150e_{ds_name}.py",
                     ),
                     checkpoint_path=osp.join(
-                        WEIGHTS_DIR, "mmdet", "detr", f"detr_{ds_name}.pt"
+                        WEIGHTS_DIR, "mmdet", "detr", f"detr_r50_8xb2-150e_coco_20221023_153551-436d03e8.pth"
                     ),
                 ),
                 evaluator=EvaluatorConf(name=ev),
@@ -81,10 +84,10 @@ def register_modelstores():
         )
 
         cs.store(
-            f"modelstore.gdino.{ds_name}",
+            f"modelstore_train.gdino.{ds_name}",
             BLUEGLASSConf(
                 runner=ModelStoreRunnerConf(),
-                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                dataset=ModelstoreDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GDINO,
                     conf_path=osp.join(
@@ -104,10 +107,10 @@ def register_modelstores():
         )
 
         cs.store(
-            f"modelstore.genu.{ds_name}",
+            f"modelstore_train.genu.{ds_name}",
             BLUEGLASSConf(
                 runner=ModelStoreRunnerConf(),
-                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                dataset=ModelstoreDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GENU,
                     conf_path=osp.join(
@@ -131,10 +134,10 @@ def register_modelstores():
         )
 
         cs.store(
-            f"modelstore.florence.{ds_name}",
+            f"modelstore_train.florence.{ds_name}",
             BLUEGLASSConf(
                 runner=ModelStoreRunnerConf(),
-                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                dataset=ModelstoreDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
                 evaluator=LabelMatchEvaluatorConf(name=ev),
                 experiment=ExperimentConf(name=f"modelstore_florence_{ds_name}"),
@@ -142,10 +145,10 @@ def register_modelstores():
         )
 
         cs.store(
-            f"modelstore.gemini.{ds_name}",
+            f"modelstore_train.gemini.{ds_name}",
             BLUEGLASSConf(
                 runner=ModelStoreRunnerConf(),
-                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                dataset=ModelstoreDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(
                     name=Model.GEMINI,
                     api_key=os.getenv("GEMINI_KEY", None),

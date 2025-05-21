@@ -1,14 +1,16 @@
 # Copyright 2025 Intel Corporation
 # SPDX: Apache-2.0
 
-from blueglass.utils.logger_utils import setup_blueglass_logger
+
 from typing import Dict, Any, Tuple, List
+import numpy as np
 from torch import Tensor
 from fvcore.common.checkpoint import Checkpointer
 from torch import nn, Tensor
 from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
+from blueglass.utils.logger_utils import setup_blueglass_logger
 from blueglass.runners.runner import Runner
 from blueglass.features import FeatureInterceptor
 from blueglass.configs.constants import FeaturePattern
@@ -23,7 +25,7 @@ logger = setup_blueglass_logger(__name__)
 class VLMLinearProbeRunner(Runner):
     def __init__(self, conf: BLUEGLASSConf):
         super().__init__(conf)
-        self.feature_pattern = FeaturePattern(conf.feature.pattern)
+        self.feature_pattern = FeaturePattern(conf.feature.patterns)
         self.infer_batch_size = conf.dataset.test_batch_size
         self.probe_fwd_period = conf.probe.fwd_period
 
@@ -47,9 +49,9 @@ class VLMLinearProbeRunner(Runner):
         return d, m, e
 
     def process_records(
-        self, gathered_records: List[Dict[str, Dict[str, Dict[str, Any]]]]
+        self, gathered_records: List[Dict[str, Dict[str, Dict[str, Any]]]], metric_mode: str = "test"
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
-        losses_dict, metric_dict, extras_dict, visual_metrics_dict = {}, {}, {}, {}
+        losses_dict, metrics_dict, extras_dict, visual_metrics_dict = {}, {}, {}, {}
 
         for rank, records_per_rank in enumerate(gathered_records):
             for branch, records_per_branch in records_per_rank.items():
@@ -79,7 +81,7 @@ class VLMLinearProbeRunner(Runner):
 
                         for metric, value in metrics_per_layer["bbox"].items():
                             formatted = f"metrics/probe_{layer_name}.{metric}"
-                            metric_dict[formatted] = value
+                            metrics_dict[formatted] = value
 
                 else:
                     raise Exception(f"unsupported branch: {branch} in records.")
@@ -87,8 +89,9 @@ class VLMLinearProbeRunner(Runner):
         if len(losses_dict) > 0:
             losses_dict["losses_reduced"] = sum(losses_dict.values())
 
-        if len(metric_dict) > 0:
-            metric_dict["metric_fitness"] = sum(metric_dict.values())
+        if len(metrics_dict) > 0:
+            prefix = f"metrics_{metric_mode}_fitness"
+            metrics_dict[prefix] = sum([v for v in metrics_dict.values() if np.isfinite(v)])
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 

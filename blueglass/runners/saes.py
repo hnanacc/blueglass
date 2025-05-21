@@ -234,7 +234,7 @@ class SAERunner(Runner):
 
         if len(metrics_dict) > 0:
             prefix = f"metrics_{metric_mode}_fitness"
-            metrics_dict[prefix] = sum(metrics_dict.values())
+            metrics_dict[prefix] = sum([v for v in metrics_dict.values() if np.isfinite(v)])
 
             # Computing metric fitness based on each sae
             metric_fitness_dict = defaultdict(int)

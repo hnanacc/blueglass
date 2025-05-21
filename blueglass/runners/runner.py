@@ -153,18 +153,17 @@ class Runner:
         return f"layer_({layerids}).({patterns}).({subpatns})"
 
     def process_records(
-        self, gathered_records: List[Dict[str, Any]], mode: str = "test"
+        self, gathered_records: List[Dict[str, Any]], metric_mode: str = "test"
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
-        losses_dict = {}
-        metric_dict = {}
-        extras_dict = {}
+
+        losses_dict, metrics_dict, visual_metrics_dict, extras_dict = {}, {}, {}, {}
 
         for rank, records in enumerate(gathered_records):
             raise NotImplementedError("Override in child class.")
 
-        return losses_dict, metric_dict, extras_dict
+        return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 
-    def register_metrics(self, records_dict: Dict[str, Any], mode: str = "test") -> None:
+    def register_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "test") -> None:
         if self.step % self.logs_period != 0:
             return None
 
@@ -183,7 +182,7 @@ class Runner:
         ), "comm error! unexpected data format."
 
         extras_dict, losses_dict, metric_dict, visual_metric_dict = (
-            self.process_records(gathered_records_dict, mode=mode)
+            self.process_records(gathered_records_dict, metric_mode=metric_mode)
         )
 
         assert (
@@ -273,10 +272,11 @@ class Runner:
             if self.step <= self.warmup_steps:
                 continue
 
-            records_dict["metrics"] = self.test()
+            records_dict["test_metrics"] = self.test()
+            # records_dict.update(metrics)
             self.model = self.model.train()
 
-            self.register_metrics(records_dict, mode="test")
+            self.register_metrics(records_dict, metric_mode="test")
 
             self.checkpoint()
 
@@ -298,7 +298,10 @@ class Runner:
         records_test_dict = {}
         if self.step % self.eval_period == 0 or self.conf.runner.mode == "test":
             dataloader, model, evaluator = self.initialize_test_attrs()
-            records_test_dict = inference_on_dataset(model, dataloader, evaluator)
+            _records_test_dict = inference_on_dataset(model, dataloader, evaluator)
+            for metric in _records_test_dict.keys():
+                for _metric_ in _records_test_dict[metric].keys():
+                    records_test_dict[f"{metric}_{_metric_}"] = _records_test_dict[metric][_metric_]
         return records_test_dict
 
     def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:
