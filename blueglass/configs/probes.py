@@ -54,7 +54,7 @@ def register_probes():
                             WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                         ),
                     ),
-                    evaluator=EvaluatorConf(name=ev, use_multi_layer=True),
+                    evaluator=EvaluatorConf(names=ev, use_multi_layer=True),
                     feature=ProbeFeatureConf(
                         path=osp.join(FEATURE_DIR, "mmdet_dinodetr")
                     ),
@@ -83,7 +83,7 @@ def register_probes():
                             WEIGHTS_DIR, "mmdet", "detr", f"detr_{ds_name}.pt"
                         ),
                     ),
-                    evaluator=EvaluatorConf(name=ev, use_multi_layer=True),
+                    evaluator=EvaluatorConf(names=ev, use_multi_layer=True),
                     feature=ProbeFeatureConf(path=osp.join(FEATURE_DIR, "mmdet_detr")),
                     probe=ProbeConf(variant=variant, use_vlm_pred_as_true=True),
                     experiment=ExperimentConf(
@@ -112,7 +112,7 @@ def register_probes():
                             WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                         ),
                     ),
-                    evaluator=EvaluatorConf(name=ev, use_multi_layer=True),
+                    evaluator=EvaluatorConf(names=ev, use_multi_layer=True),
                     feature=ProbeFeatureConf(path=osp.join(FEATURE_DIR, "gdino")),
                     probe=ProbeConf(variant=variant, use_vlm_pred_as_true=True),
                     experiment=ExperimentConf(name=f"probe_{variant}_gdino_{ds_name}"),
@@ -143,7 +143,7 @@ def register_probes():
                             WEIGHTS_DIR, "lvis_v1_clip_a+cname_ViT-H.npy"
                         ),
                     ),
-                    evaluator=LabelMatchEvaluatorConf(name=ev, use_multi_layer=True),
+                    evaluator=LabelMatchEvaluatorConf(names=ev, use_multi_layer=True),
                     feature=ProbeFeatureConf(path=osp.join(FEATURE_DIR, "genu")),
                     probe=ProbeConf(variant=variant, use_vlm_pred_as_true=True),
                     experiment=ExperimentConf(name=f"probe_{variant}_genu_{ds_name}"),
@@ -158,7 +158,7 @@ def register_probes():
                         train=ds_train, test=ds_test, label=ds_test
                     ),
                     model=ModelConf(name=Model.FLORENCE),
-                    evaluator=LabelMatchEvaluatorConf(name=ev, use_multi_layer=True),
+                    evaluator=LabelMatchEvaluatorConf(names=ev, use_multi_layer=True),
                     feature=ProbeFeatureConf(path=osp.join(FEATURE_DIR, "florence")),
                     probe=ProbeConf(variant=variant, use_vlm_pred_as_true=True),
                     experiment=ExperimentConf(

@@ -83,7 +83,7 @@ def register_decoder_cluster():
                         WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=DecoderClusterFeatureConf(),
                 sae=DecoderClusterSAEVariantConf(),
                 experiment=ExperimentConf(name=f"decodercluster_gdino_{ds_name}"),

@@ -33,7 +33,7 @@ def register_modelstore():
                     name=Model.YOLO,
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 experiment=ExperimentConf(name=f"modelstore_yolo_{ds_name}"),
             ),
         )
@@ -51,10 +51,13 @@ def register_modelstore():
                         f"dino-4scale_r50_improved_8xb2-12e_{ds_name}.py",
                     ),
                     checkpoint_path=osp.join(
-                        WEIGHTS_DIR, "mmdet", "dinodetr", f"dino-4scale_r50_improved_8xb2-12e_coco_20230818_162607-6f47a913.pth"
+                        WEIGHTS_DIR,
+                        "mmdet",
+                        "dinodetr",
+                        f"dino-4scale_r50_improved_8xb2-12e_coco_20230818_162607-6f47a913.pth",
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 experiment=ExperimentConf(name=f"modelstore_dinodetr_{ds_name}"),
             ),
         )
@@ -72,10 +75,13 @@ def register_modelstore():
                         f"detr_r50_8xb2-150e_{ds_name}.py",
                     ),
                     checkpoint_path=osp.join(
-                        WEIGHTS_DIR, "mmdet", "detr", f"detr_r50_8xb2-150e_coco_20221023_153551-436d03e8.pth"
+                        WEIGHTS_DIR,
+                        "mmdet",
+                        "detr",
+                        f"detr_r50_8xb2-150e_coco_20221023_153551-436d03e8.pth",
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 experiment=ExperimentConf(name=f"modelstore_detr_{ds_name}"),
             ),
         )
@@ -98,7 +104,7 @@ def register_modelstore():
                         WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 experiment=ExperimentConf(name=f"modelstore_gdino_{ds_name}"),
             ),
         )
@@ -125,7 +131,7 @@ def register_modelstore():
                         WEIGHTS_DIR, "lvis_v1_clip_a+cname_ViT-H.npy"
                     ),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev, num_topk_matches=3),
+                evaluator=LabelMatchEvaluatorConf(names=ev, num_topk_matches=3),
                 experiment=ExperimentConf(name=f"modelstore_genu_{ds_name}"),
             ),
         )
@@ -136,7 +142,7 @@ def register_modelstore():
                 runner=ModelStoreRunnerConf(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 experiment=ExperimentConf(name=f"modelstore_florence_{ds_name}"),
             ),
         )
@@ -150,7 +156,7 @@ def register_modelstore():
                     name=Model.GEMINI,
                     api_key=os.getenv("GEMINI_KEY", None),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 experiment=ExperimentConf(name=f"modelstore_gemini_{ds_name}"),
             ),
         )

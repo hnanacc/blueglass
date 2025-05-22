@@ -163,7 +163,9 @@ class Runner:
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 
-    def register_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "test") -> None:
+    def register_metrics(
+        self, records_dict: Dict[str, Any], metric_mode: str = "test"
+    ) -> None:
         if self.step % self.logs_period != 0:
             return None
 
@@ -301,7 +303,9 @@ class Runner:
             _records_test_dict = inference_on_dataset(model, dataloader, evaluator)
             for metric in _records_test_dict.keys():
                 for _metric_ in _records_test_dict[metric].keys():
-                    records_test_dict[f"{metric}_{_metric_}"] = _records_test_dict[metric][_metric_]
+                    records_test_dict[f"{metric}_{_metric_}"] = _records_test_dict[
+                        metric
+                    ][_metric_]
         return records_test_dict
 
     def initialize_infer_attrs(self) -> Tuple[DataLoader, nn.Module]:

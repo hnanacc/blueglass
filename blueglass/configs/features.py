@@ -59,7 +59,7 @@ def register_features():
                         WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=ExtractFeatureConf(),
                 experiment=ExperimentConf(name=f"extract_dinodetr_{ds_name}"),
             ),
@@ -81,7 +81,7 @@ def register_features():
                         WEIGHTS_DIR, "mmdet", "detr", f"detr{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=ExtractFeatureConf(),
                 experiment=ExperimentConf(name=f"extract_detr_{ds_name}"),
             ),
@@ -105,7 +105,7 @@ def register_features():
                         WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=ExtractFeatureConf(),
                 experiment=ExperimentConf(name=f"extract_gdino_{ds_name}"),
             ),
@@ -133,7 +133,7 @@ def register_features():
                         WEIGHTS_DIR, "genu", "lvis_v1_clip_a+cname_ViT-H.npy"
                     ),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 feature=ExtractFeatureConf(),
                 experiment=ExperimentConf(name=f"features_genu_{ds_name}"),
             ),
@@ -145,7 +145,7 @@ def register_features():
                 runner=ExtractRunnerConf(),
                 dataset=ExtractDatasetConf(infer=ds_train, label=ds_train),
                 model=ModelConf(name=Model.FLORENCE),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 feature=ExtractFeatureConf(),
                 experiment=ExperimentConf(name=f"features_florence_{ds_name}"),
             ),

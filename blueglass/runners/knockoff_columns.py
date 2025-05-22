@@ -139,8 +139,7 @@ class KnockoffColumns(SAERunner):
                 f"Unexpected keys in state_dict: {unexpected_keys}."
             )
         return m
-	
-	
+
     def build_model(self, conf) -> nn.Module:
 
         model = self.build_saes_model()
@@ -178,7 +177,7 @@ class KnockoffColumns(SAERunner):
         use_all_layers = self.conf.layer_knock_off.use_all_layers
 
         def run_all_patchers():
-            
+
             active_knockoff_range = self.conf.layer_knock_off.active_knockoff_range
             knockoff_range_fmt = "_".join(str(x) for x in active_knockoff_range)
             records_patcher = {}
@@ -353,20 +352,26 @@ class KnockoffColumns(SAERunner):
             vanilla_records_patcher = inference_on_dataset(self.feature_model, ds, ev)
 
             # self.vanilla_metrics = {**vanilla_records_patcher, **test_patcher}
-            knockoff_range_fmt = "_".join(str(x) for x in self.conf.layer_knock_off.active_knockoff_range)
+            knockoff_range_fmt = "_".join(
+                str(x) for x in self.conf.layer_knock_off.active_knockoff_range
+            )
             for metric in vanilla_records_patcher.keys():
                 for _metric_ in vanilla_records_patcher[metric].keys():
-                    _records_patcher[f"vanilla/{knockoff_range_fmt}_{metric}_{_metric_}"] = (
-                        vanilla_records_patcher[metric][_metric_]
-                    )
+                    _records_patcher[
+                        f"vanilla/{knockoff_range_fmt}_{metric}_{_metric_}"
+                    ] = vanilla_records_patcher[metric][_metric_]
             vanilla_metrics = {**_records_patcher}
             self.vanilla_metrics = vanilla_metrics
         else:
             records_patcher.update(self.vanilla_metrics)
-        logger.info("Evaluation for detection in VLM using sae patchers and knockoff ranges.")
+        logger.info(
+            "Evaluation for detection in VLM using sae patchers and knockoff ranges."
+        )
         infer_patcher = self.infer_with_sae_knockoff_patchers(knockoff=True)
 
-        logger.info("Evaluation for detection in VLM using knockoff ranges directly in the model.")
+        logger.info(
+            "Evaluation for detection in VLM using knockoff ranges directly in the model."
+        )
         infer_knockoff = self.infer_with_knockoff_in_feat_model()
 
         records_patcher["infer_metrics"] = {
@@ -402,8 +407,10 @@ class KnockoffColumns(SAERunner):
                 )
         self.vanilla_metrics = None
 
-    def register_infer_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "infer") -> None:
-        
+    def register_infer_metrics(
+        self, records_dict: Dict[str, Any], metric_mode: str = "infer"
+    ) -> None:
+
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
@@ -558,7 +565,6 @@ class KnockoffColumns(SAERunner):
         # Slice the band
         return columns_ranks[start_idx:end_idx]
 
-
     def build_optimizer(
         self,
         conf: BLUEGLASSConf,
@@ -577,7 +583,7 @@ class KnockoffColumns(SAERunner):
         raise NotImplementedError(
             "Train dataloader is not supported for the decoder cluster runner."
         )
-	
+
     def train(self) -> None:
         raise NotImplementedError(
             "Train method is not supported for the layer knockoff runner."
@@ -587,8 +593,10 @@ class KnockoffColumns(SAERunner):
         raise NotImplementedError(
             "Test method is not supported for the layer knockoff runner."
         )
-	
-    def register_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "test") -> None:
+
+    def register_metrics(
+        self, records_dict: Dict[str, Any], metric_mode: str = "test"
+    ) -> None:
         if self.step % self.logs_period != 0:
             return None
 

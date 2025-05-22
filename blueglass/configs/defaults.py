@@ -51,9 +51,10 @@ class ModelConf:
 
 @dataclass
 class EvaluatorConf:
-    name: Evaluator = Evaluator.COCO
+    names: Evaluator = Evaluator.COCO
     use_label_matcher: bool = False
     use_multi_layer: bool = False
+    use_multi_evaluators: bool = False
     use_descriptions: bool = False
     use_box_ious: bool = False
     use_box_objectness: bool = False

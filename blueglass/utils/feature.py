@@ -21,6 +21,7 @@ logger = setup_blueglass_logger(__name__)
 REPO_ID = "IntelLabs/BlueLens"
 REMOTE = "IntelLabs/BlueLens"
 
+
 @lru_cache
 def LIST_REPO_FILES():
     remote_names = []
@@ -28,8 +29,9 @@ def LIST_REPO_FILES():
         remote_names = list_repo_files(REMOTE, repo_type="dataset")
     except Exception as e:
         logger.warning("Hugging Face Hub is not reachable.")
-        
+
     return remote_names
+
 
 @lru_cache(maxsize=100)
 def LIST_ONDISK_FILES(search_path: str) -> List[str]:

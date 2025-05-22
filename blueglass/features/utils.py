@@ -9,7 +9,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 MAX_ROWS_PER_FILE = 500_000
-OLD_ROOT_DIR = "/export/work/squtub/datasets/BlueLens/features_datasets/gdino/gdino.coco_train"
+OLD_ROOT_DIR = (
+    "/export/work/squtub/datasets/BlueLens/features_datasets/gdino/gdino.coco_train"
+)
 NEW_ROOT_DIR = "BlueLensPosNeg_delete"
 NEW_1_ROOT_DIR = "BlueLensPosNeg"
 

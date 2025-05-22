@@ -99,9 +99,8 @@ class SaeKnockoff(SAERunner):
         self.model = self.model.eval().to(self.device)
         return d
 
-
     def _build_patchers_with_knockoff(self, knockoff=False) -> Dict[str, Patcher]:
-        model = copy.deepcopy(self.model) 
+        model = copy.deepcopy(self.model)
         model = maybe_strip_ddp(model)
         if knockoff is True:
             for name, sae in model.eval().sae_per_name.items():
@@ -290,11 +289,15 @@ class SaeKnockoff(SAERunner):
         """
 
         records_patcher, infer_patcher, infer_knockoff = {}, {}, {}
-        
-        logger.info("Evaluation for detection in VLM using sae patchers and knockoff ranges.")
+
+        logger.info(
+            "Evaluation for detection in VLM using sae patchers and knockoff ranges."
+        )
         infer_patcher = self.infer_with_sae_knockoff_patchers(knockoff=True)
 
-        logger.info("Evaluation for detection in VLM using knockoff ranges directly in the model.")
+        logger.info(
+            "Evaluation for detection in VLM using knockoff ranges directly in the model."
+        )
         infer_knockoff = self.infer_with_knockoff_in_feat_model()
 
         records_patcher["infer_metrics"] = {
@@ -327,8 +330,10 @@ class SaeKnockoff(SAERunner):
                     f"Processed at {self.step}: {self.infer_step+1} / {len(self.conf.layer_knock_off.knockoff_range)}"
                 )
 
-    def register_infer_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "infer") -> None:
-        
+    def register_infer_metrics(
+        self, records_dict: Dict[str, Any], metric_mode: str = "infer"
+    ) -> None:
+
         records_dict = {
             k: v.detach().cpu().item() if isinstance(v, Tensor) else v
             for k, v in records_dict.items()
@@ -494,9 +499,9 @@ class SaeKnockoff(SAERunner):
         self.best_tracker = BestTracker()
         self.grad_scaler = GradScaler("cuda")
         self.resolve_enabled_sae_patchers()
- 
+
         for self.step, data in zip(range(1, self.max_steps + 1), self.dataloader):
-            
+
             records_dict = self.run_step(data)
 
             if self.step <= self.warmup_steps:
@@ -566,7 +571,9 @@ class SaeKnockoff(SAERunner):
 
         return {**records_feature, **records_patcher, **records_visuals}
 
-    def register_metrics(self, records_dict: Dict[str, Any], metric_mode: str = "test") -> None:
+    def register_metrics(
+        self, records_dict: Dict[str, Any], metric_mode: str = "test"
+    ) -> None:
         if self.step % self.logs_period != 0:
             return None
 

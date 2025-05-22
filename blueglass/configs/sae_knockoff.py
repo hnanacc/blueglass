@@ -60,6 +60,7 @@ class SAEVariantConf(SAEConf):
     topk: int = 32
     # loss_topk_aux_coeff: float = field(default_factory=lambda: 0)
 
+
 @dataclass
 class SAEDatasetConf(DatasetConf):
     batch_size: int = 10
@@ -73,6 +74,7 @@ class SaeKnockoffRunnerConf(RunnerConf):
     warmup_steps: int = 1
     eps: float = 1e-8
     precision: Precision = Precision.BFLOAT16
+
 
 @dataclass
 class SAEFeatureConf(FeatureConf):
@@ -100,12 +102,14 @@ def register_saeknockoff():
             f"saeknockoff.yolo.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(
+                    train=ds_train, test=ds_test, label=ds_test
+                ),
                 model=ModelConf(
                     name=Model.YOLO,
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_yolo_{ds_name}"),
@@ -117,7 +121,9 @@ def register_saeknockoff():
             f"saeknockoff.mmdet_dinodetr.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(
+                    train=ds_train, test=ds_test, label=ds_test
+                ),
                 model=ModelConf(
                     name=Model.DINO_DETR,
                     conf_path=osp.join(
@@ -129,7 +135,7 @@ def register_saeknockoff():
                         WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(
@@ -143,7 +149,9 @@ def register_saeknockoff():
             f"saeknockoff.mmdet_detr.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(
+                    train=ds_train, test=ds_test, label=ds_test
+                ),
                 model=ModelConf(
                     name=Model.DETR,
                     conf_path=osp.join(
@@ -155,7 +163,7 @@ def register_saeknockoff():
                         WEIGHTS_DIR, "mmdet", "detr", f"detr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_detr_{ds_name}"),
@@ -167,7 +175,9 @@ def register_saeknockoff():
             f"saeknockoff.gdino.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(
+                    train=ds_train, test=ds_test, label=ds_test
+                ),
                 model=ModelConf(
                     name=Model.GDINO,
                     conf_path=osp.join(
@@ -181,7 +191,7 @@ def register_saeknockoff():
                         WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_gdino_{ds_name}"),
@@ -193,7 +203,9 @@ def register_saeknockoff():
             f"saeknockoff.genu.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(
+                    train=ds_train, test=ds_test, label=ds_test
+                ),
                 model=ModelConf(
                     name=Model.GENU,
                     conf_path=osp.join(
@@ -211,7 +223,7 @@ def register_saeknockoff():
                         WEIGHTS_DIR, "lvis_v1_clip_a+cname_ViT-H.npy"
                     ),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev, num_topk_matches=3),
+                evaluator=LabelMatchEvaluatorConf(names=ev, num_topk_matches=3),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_genu_{ds_name}"),
@@ -222,9 +234,11 @@ def register_saeknockoff():
             f"saeknockoff.florence.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(
+                    train=ds_train, test=ds_test, label=ds_test
+                ),
                 model=ModelConf(name=Model.FLORENCE),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(
@@ -237,12 +251,14 @@ def register_saeknockoff():
             f"saeknockoff.gemini.{ds_name}",
             BLUEGLASSConf(
                 runner=SaeKnockoffRunnerConf(),
-                dataset=SaeKnockoffDatasetConf(train=ds_train, test=ds_test, label=ds_test),
+                dataset=SaeKnockoffDatasetConf(
+                    train=ds_train, test=ds_test, label=ds_test
+                ),
                 model=ModelConf(
                     name=Model.GEMINI,
                     api_key=os.getenv("GEMINI_KEY", None),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(

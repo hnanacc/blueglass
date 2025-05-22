@@ -193,15 +193,19 @@ class AutoEncoder(nn.Module):
             self.coeff_reconstr
             * (pred_features.float() - true_features.float()).pow(2).mean()
         )
-        
-    def _loss_reconstr_fvu(self, true_features: Tensor, pred_features: Tensor) -> Tensor:
+
+    def _loss_reconstr_fvu(
+        self, true_features: Tensor, pred_features: Tensor
+    ) -> Tensor:
         mse = F.mse_loss(pred_features.float(), true_features.float())
-        var = true_features.float().var(unbiased=False)  # Match default in `.var()` for consistency
+        var = true_features.float().var(
+            unbiased=False
+        )  # Match default in `.var()` for consistency
         return self.coeff_reconstr * (mse / var)
 
     def _loss_sparsity(self, interims: Tensor) -> Tensor:
         return self.coeff_sparsity * self._norm_l1(interims)
-    
+
     def _loss_sparsity_l0(self, interims: Tensor) -> Tensor:
         return self.coeff_sparsity * self._norm_l0(interims)
 
@@ -232,7 +236,9 @@ class AutoEncoder(nn.Module):
 
         for i in range(0, num_latents, chunk_size):
             chunk = self.latents_fire_count[i : i + chunk_size]
-            dense_count += torch.count_nonzero(torch.gt(chunk, self.threshold_dense)).item()
+            dense_count += torch.count_nonzero(
+                torch.gt(chunk, self.threshold_dense)
+            ).item()
 
         density_ratio = dense_count / self.feature_seen_count.float()
         return density_ratio
@@ -245,7 +251,9 @@ class AutoEncoder(nn.Module):
 
         for i in range(0, num_latents, chunk_size):
             chunk = self.latents_dead_since[i : i + chunk_size]
-            dead_count += torch.count_nonzero(torch.gt(chunk, self.threshold_dead)).item()
+            dead_count += torch.count_nonzero(
+                torch.gt(chunk, self.threshold_dead)
+            ).item()
 
         dead_ratio = dead_count / self.feature_seen_count.float()
         return dead_ratio
@@ -258,7 +266,9 @@ class AutoEncoder(nn.Module):
 
         for i in range(0, num_latents, chunk_size):
             chunk = self.latents_dead_since[i : i + chunk_size]
-            dead_count += torch.count_nonzero(torch.gt(chunk, self.min_threshold_dead)).item()
+            dead_count += torch.count_nonzero(
+                torch.gt(chunk, self.min_threshold_dead)
+            ).item()
 
         dead_ratio = dead_count / self.feature_seen_count.float()
         return dead_ratio

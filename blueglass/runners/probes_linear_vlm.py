@@ -49,7 +49,9 @@ class VLMLinearProbeRunner(Runner):
         return d, m, e
 
     def process_records(
-        self, gathered_records: List[Dict[str, Dict[str, Dict[str, Any]]]], metric_mode: str = "test"
+        self,
+        gathered_records: List[Dict[str, Dict[str, Dict[str, Any]]]],
+        metric_mode: str = "test",
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
         losses_dict, metrics_dict, extras_dict, visual_metrics_dict = {}, {}, {}, {}
 
@@ -91,7 +93,9 @@ class VLMLinearProbeRunner(Runner):
 
         if len(metrics_dict) > 0:
             prefix = f"metrics_{metric_mode}_fitness"
-            metrics_dict[prefix] = sum([v for v in metrics_dict.values() if np.isfinite(v)])
+            metrics_dict[prefix] = sum(
+                [v for v in metrics_dict.values() if np.isfinite(v)]
+            )
 
         return extras_dict, losses_dict, metrics_dict, visual_metrics_dict
 

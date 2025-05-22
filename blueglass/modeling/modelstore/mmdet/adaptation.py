@@ -46,6 +46,7 @@ class MMDetModel(nn.Module):
 
     def _prepare_mm_confs(self, conf: BLUEGLASSConf) -> MMDetConfs:
         assert conf.model.conf_path is not None, "Require conf_path for mmdet models."
+        print("\n\n\nconf.model.conf_path:", conf.model.conf_path)
         assert osp.exists(conf.model.conf_path), "Conf file doens't exists."
         return MMDetConfs.fromfile(conf.model.conf_path)
 

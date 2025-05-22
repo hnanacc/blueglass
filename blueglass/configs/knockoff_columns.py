@@ -46,9 +46,7 @@ class LayerknockoffExpConfig(LayerKnockoffExpConf):
 class SAEVariantConf(SAEConf):
     variant: SAEVariant = SAEVariant.TOPK_FAST
     topk: int = 32
-    config_path: str = (
-        "/home/squtub/github_repos/blueglass/trained_saes/new_L45.json"
-    )
+    config_path: str = "/home/squtub/github_repos/blueglass/trained_saes/new_L45.json"
     checkpoint_path: str = (
         "/home/squtub/github_repos/blueglass/trained_saes/new_L45_500.pth"
     )
@@ -83,7 +81,7 @@ def register_layerknockoff():
                     name=Model.YOLO,
                     checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_yolo_{ds_name}"),
@@ -107,7 +105,7 @@ def register_layerknockoff():
                         WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(
@@ -133,7 +131,7 @@ def register_layerknockoff():
                         WEIGHTS_DIR, "mmdet", "detr", f"detr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_detr_{ds_name}"),
@@ -159,7 +157,7 @@ def register_layerknockoff():
                         WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_gdino_{ds_name}"),
@@ -189,7 +187,7 @@ def register_layerknockoff():
                         WEIGHTS_DIR, "lvis_v1_clip_a+cname_ViT-H.npy"
                     ),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev, num_topk_matches=3),
+                evaluator=LabelMatchEvaluatorConf(names=ev, num_topk_matches=3),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(name=f"knockoff_red_attn_wt_genu_{ds_name}"),
@@ -202,7 +200,7 @@ def register_layerknockoff():
                 runner=KnockoffColumns(),
                 dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(
@@ -220,7 +218,7 @@ def register_layerknockoff():
                     name=Model.GEMINI,
                     api_key=os.getenv("GEMINI_KEY", None),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 sae=SAEVariantConf(),
                 feature=SAEFeatureConf(),
                 experiment=ExperimentConf(

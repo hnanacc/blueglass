@@ -17,7 +17,7 @@ def build_dataset_specific_evaluator(
 ) -> DatasetEvaluator:
 
     conf_dataset = conf.dataset.infer if runner_mode == "infer" else conf.dataset.test
-    match conf.evaluator.name:
+    match conf.evaluator.names:
         case Evaluator.COCO:
             return COCOEvaluator(
                 conf_dataset, tasks=["bbox"], output_dir=conf.experiment.output_dir

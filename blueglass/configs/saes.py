@@ -93,7 +93,7 @@ def register_saes():
                         WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=SAEFeatureConf(),
                 sae=SAEVariantConf(),
                 experiment=ExperimentConf(name=f"sae_mmdet_dinodetr_{ds_name}"),
@@ -116,7 +116,7 @@ def register_saes():
                         WEIGHTS_DIR, "mmdet", "detr", f"detr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=SAEFeatureConf(),
                 sae=SAEVariantConf(),
                 experiment=ExperimentConf(name=f"sae_mmdet_detr_{ds_name}"),
@@ -141,7 +141,7 @@ def register_saes():
                         WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=SAEFeatureConf(),
                 sae=SAEVariantConf(),
                 experiment=ExperimentConf(name=f"sae_gdino_{ds_name}"),
@@ -170,7 +170,7 @@ def register_saes():
                         WEIGHTS_DIR, "lvis_v1_clip_a+cname_ViT-H.npy"
                     ),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 feature=SAEFeatureConf(),
                 sae=SAEVariantConf(),
                 experiment=ExperimentConf(name=f"sae_genu_{ds_name}"),
@@ -183,7 +183,7 @@ def register_saes():
                 runner=SAERunnerConf(),
                 dataset=SAEDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 feature=SAEFeatureConf(),
                 sae=SAEVariantConf(),
                 experiment=ExperimentConf(name=f"sae_florence_{ds_name}"),

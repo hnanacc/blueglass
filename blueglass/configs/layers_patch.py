@@ -50,7 +50,7 @@ def register_layerpatch():
                         WEIGHTS_DIR, "mmdet", "dinodetr", f"dinodetr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=SAEFeatureConf(path=osp.join(FEATURE_DIR, "dinodetr")),
                 sae=SAEConf(),
                 experiment=ExperimentConf(name=f"layerpatch_dinodetr_{ds_name}"),
@@ -73,7 +73,7 @@ def register_layerpatch():
                         WEIGHTS_DIR, "mmdet", "detr", f"detr_{ds_name}.pt"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=SAEFeatureConf(path=osp.join(FEATURE_DIR, "detr")),
                 sae=SAEConf(),
                 experiment=ExperimentConf(name=f"layerpatch_detr_{ds_name}"),
@@ -98,7 +98,7 @@ def register_layerpatch():
                         WEIGHTS_DIR, "gdino", "groundingdino_swint_ogc.pth"
                     ),
                 ),
-                evaluator=EvaluatorConf(name=ev),
+                evaluator=EvaluatorConf(names=ev),
                 feature=SAEFeatureConf(path=osp.join(FEATURE_DIR, "gdino")),
                 sae=SAEConf(),
                 experiment=ExperimentConf(name=f"layerpatch_gdino_{ds_name}"),
@@ -127,7 +127,7 @@ def register_layerpatch():
                         WEIGHTS_DIR, "lvis_v1_clip_a+cname_ViT-H.npy"
                     ),
                 ),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 feature=SAEFeatureConf(path=osp.join(FEATURE_DIR, "genu")),
                 sae=SAEConf(),
                 experiment=ExperimentConf(name=f"layerpatch_genu_{ds_name}"),
@@ -140,7 +140,7 @@ def register_layerpatch():
                 runner=SAERunnerConf(),
                 dataset=SAEDatasetConf(train=ds_train, test=ds_test, label=ds_test),
                 model=ModelConf(name=Model.FLORENCE),
-                evaluator=LabelMatchEvaluatorConf(name=ev),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
                 feature=SAEFeatureConf(path=osp.join(FEATURE_DIR, "florence")),
                 sae=SAEConf(),
                 experiment=ExperimentConf(name=f"layerpatch_florence_{ds_name}"),

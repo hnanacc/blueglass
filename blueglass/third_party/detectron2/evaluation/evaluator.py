@@ -229,7 +229,13 @@ def inference_on_dataset(
             num_devices,
         )
     )
-    results = evaluator.evaluate(**eve_kwargs)
+    if isinstance(evaluator, List):
+        results = {}
+        for e in evaluator:
+            results[e] = e.evaluate(**eve_kwargs)
+
+    else:
+        results = evaluator.evaluate(**eve_kwargs)
 
     # An evaluator may return None when not in main process.
     # Replace it by an empty dict instead to make it easier for downstream code to handle

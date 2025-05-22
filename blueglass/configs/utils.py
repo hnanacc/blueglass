@@ -111,8 +111,14 @@ def load_blueglass_from_wandb(
     if isinstance(blueglassconf.model.name, str):
         blueglassconf.model.name = Model(blueglassconf.model.name.lower())
 
-    if isinstance(blueglassconf.evaluator.name, str):
+    if isinstance(blueglassconf.evaluator.names, str):
         blueglassconf.evaluator.name = Evaluator(blueglassconf.evaluator.name.lower())
+
+    if isinstance(blueglassconf.evaluator.names, List):
+        names = blueglassconf.evaluator.names
+        blueglassconf.evaluator.names = [
+            Evaluator(name) if isinstance(name, str) else name for name in names
+        ]
 
     if original_config is not None:
         # Merge with the original config

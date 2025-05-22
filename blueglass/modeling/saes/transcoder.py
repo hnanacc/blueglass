@@ -101,7 +101,7 @@ class TransCoder(nn.Module):
         return {}
 
     def forward_autoenc(self, batched_inputs: List[Dict[str, Any]]) -> Dict[str, Any]:
-        
+
         true_input_features, ctx = self.preprocess(batched_inputs[0], {})
         true_output_features, ctx = self.preprocess(batched_inputs[1], {})
         prep_interims, ctx = self.encode(true_input_features, ctx)
@@ -111,7 +111,9 @@ class TransCoder(nn.Module):
         if self.training:
             self.update_features_metrics(true_input_features, pred_features)
             self.update_interims_metrics(posp_interims)
-            return self.compute_losses(true_output_features, pred_features, posp_interims, ctx)
+            return self.compute_losses(
+                true_output_features, pred_features, posp_interims, ctx
+            )
         else:
             return self.postprocess(
                 batched_inputs, true_output_features, pred_features, posp_interims, ctx

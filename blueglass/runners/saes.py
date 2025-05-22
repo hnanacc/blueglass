@@ -234,7 +234,9 @@ class SAERunner(Runner):
 
         if len(metrics_dict) > 0:
             prefix = f"metrics_{metric_mode}_fitness"
-            metrics_dict[prefix] = sum([v for v in metrics_dict.values() if np.isfinite(v)])
+            metrics_dict[prefix] = sum(
+                [v for v in metrics_dict.values() if np.isfinite(v)]
+            )
 
             # Computing metric fitness based on each sae
             metric_fitness_dict = defaultdict(int)
@@ -307,7 +309,9 @@ class SAERunner(Runner):
 
         records_patcher = {}
         built_patchers = self._build_patchers()
-        ds = build_test_dataloader(self.conf.dataset.test, self.conf.dataset.test_batch_size)
+        ds = build_test_dataloader(
+            self.conf.dataset.test, self.conf.dataset.test_batch_size
+        )
         for name, _single_patcher in built_patchers.items():
             single_patcher = {name: _single_patcher}
             dm = FeatureInterceptor(
