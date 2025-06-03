@@ -57,7 +57,7 @@ The framework includes a custom infrastructure and lightweight modifications to 
 
 ## 📦 Coming Soon
 
-- 🔍 Prebuilt probes for common models  
+<!--- 🔍 Prebuilt probes for common models --->
 - 📚 Tutorials and example notebooks
 
 ---
@@ -70,11 +70,14 @@ The framework includes a custom infrastructure and lightweight modifications to 
 
 ## 📖 Detailed Documentation
 #### [🛠️ BLUEGLASS Project Pipeline Overview](docs/project_execution_overview.md)
+
+<!--- 
 #### [📊 Benchmarking Guide](docs/benchmarking.md)
 #### [🧩 Feature Extraction](docs/02_feature_extraction.md)
 #### [🔍 Interpreter Tools](docs/03_interp_tools.md)
 #### [📂 Dataset Handling and Management](docs/05_data_preparation.md)
 #### [▶️ Usage Guide](docs/usage_guide.md)
+--->
 
 ## 🤝 Contributing
 
