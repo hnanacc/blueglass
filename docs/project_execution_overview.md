@@ -10,19 +10,56 @@ Our codebase is structured as a modular execution pipeline. It operates on a con
 
 ## 1️⃣ Configuration Loading
 
-The system starts by loading configuration files defining the model, dataset, evaluation metrics, and execution parameters.
+The BlueGlass workflow starts by loading a configuration file that defines:
+- The model
+- The dataset
+- The evaluation metrics
+- Other execution parameters
+
+To launch an experiment, use:
+
+<pre> python launch.py --config-name modelstore.mmdet_detr.coco </pre>
+
+In this example: **modelstore** is the name of the runner, **mmdet_detr** refers to the selected model, and **coco** is the dataset.
+
+Each configuration is registered in the BlueGlass config module under a specific runner config file.
+📄 This particular configuration is stored in: blueglass/blueglass/configs/modelstore_benchmarks.py
+
+Below is how the configuration is registered using Hydra’s ConfigStore:
+<pre>
+cs.store(
+    f"modelstore.mmdet_detr.coco",
+    BLUEGLASSConf(
+        runner=ModelStoreRunnerConf(),  # Defines execution logic
+        dataset=ModelstoreDatasetConf(
+            test=ds_test,
+            label=ds_test
+        ),  # Specifies test and label datasets
+        model=ModelConf(
+            name=Model.YOLO,
+            checkpoint_path=osp.join(WEIGHTS_DIR, "yolo", "yolov8x-oiv7.pt"),
+        ),  # Model details and weights path
+        evaluator=LabelMatchEvaluatorConf(names=ev),  # Evaluation metrics
+        experiment=ExperimentConf(name=f"modelstore_yolo_{ds_name}"),  # Experiment metadata
+    ),
+)
+</pre>
+This modular configuration structure allows you to easily switch models, datasets, or evaluators by changing only the config name.
+
 ## 2️⃣ Runner Initialization
 
 The runner module reads these configurations and initializes the necessary components, such as models, evaluators, and metrics.
 ## 3️⃣ Task-Specific Runners
-Based on the defined task in the configuration, different specialized runners are activated:
+Based on the defined task in the configuration, different specialised runners are activated. A few examples are listed below:
 
 - Benchmarking Runner: Evaluates model performance against standard benchmarks.
+  <pre> python launch.py --config-name modelstore.mmdet_detr.coco </pre>
 - Feature Extraction Runner: Extracts and processes feature representations.
-- Feature Exploration Runner: Analyzes feature distributions and relationships.
+  <pre> python launch.py --config-name features.mmdet_detr.coco </pre>
 - Linear Probing Runner: Conducts linear probing experiments.
+  <pre> python launch.py --config-name probe.mmdet_detr.coco </pre>
 - SAE (Sparse Autoencoder) Runner: Applies sparse autoencoders for interpretation.
-- Interpreter Tools: Loads additional tools for model interpretability.
+  <pre> python launch.py --config-name saes.mmdet_detr.coco </pre>
 
 Additionally, if you need to perform a new task, you can easily create a custom runner by following the existing templates. Typically, you will need to:
 
