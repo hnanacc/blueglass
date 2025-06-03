@@ -1,6 +1,40 @@
 # 💡 Project Execution Flow Overview: 
 Our codebase is structured as a modular execution pipeline. It operates on a configuration-driven approach, ensuring flexibility and scalability across multiple tasks. The core workflow consists of the following steps:
 
+The framework comprises three core abstractions that enable the building and composition of safety tools that operate over model internals, outputs, and evaluation metrics, all within a standard execution and data management framework, as shown in the figure below.
+
+<div align="center">
+  <img src="images/Group 74.svg" alt="BlueGlass Logo" width="360"/>
+</div>
+
+### A: Foundations:
+This layer provides the essential building blocks that the framework operates upon and interacts with. It includes modules for interfacing with diverse models, managing various datasets, defining and executing evaluators for performance and safety evaluations, and orchestrating experimental runs via runners. These components provide an abstraction over multiple sources, including HuggingFace, detectron2, mmdetection, and custom implementations, allowing them to be readily integrated with other components through a unified interface.
+
+### B: Feature Tools
+Modern AI safety increasingly relies on intrinsic methods to inspect and manipulate model internals. However, current tools are often tightly coupled to specific architectures, inaccessible, or poorly integrated. 
+To address this, BLUEGLASS introduces a modular Feature Tools layer for managing internal representations across models and tasks:
+
+- B.1. Interceptor: Wraps the model to define standardized access points for capturing or modifying internal features. Supports both manual and automatic (hooked) modes.
+
+- B.2. Recorder: Captures intermediate features during model execution for later analysis.
+
+- B.3. Patcher: Enables feature-level interventions like activation patching or steering for counterfactual analysis.
+
+- B.4. Aligner: Normalizes feature shapes and formats across layers and models to a standard schema.
+
+- B.5. Storage: Stores aligned features using Apache Arrow + Parquet for efficient loading. Features are accessible via a FeatureDataset wrapper and can be streamed via HuggingFace Datasets.
+
+Together, these components provide a unified, extensible system for white-box interpretability and AI safety workflows.
+
+<div align="center">
+  <img src="images/Group 73.svg" alt="BlueGlass Logo" width="360"/>
+</div>
+
+### C: Safety Tools
+Building upon the core foundations and the robust model internals management system, the framework empowers researchers to compose and deploy a diverse array of AI safety tools. These tools seamlessly interact with target models and datasets via the foundations and utilize the standardized access to internal representations
+provided by the feature tools to enable composite AI safety workflows. The capabilities and practical applicability of the framework in supporting safety workflows are
+demonstrated in the following sections through detailed case studies focusing on safety-oriented evaluation methodologies, probing of representations, and concept analysis using sparse autoencoders for vision-language models on the task of object detection 
+
 ## 📊 [BLUEGLASS Pipeline Structure](docs/project_execution_overview.md)
 #### 🏃 Runners: Executes training, evaluation, and inference.
 #### 📦 Model Wrappers: Generic interface to integrate any model.
