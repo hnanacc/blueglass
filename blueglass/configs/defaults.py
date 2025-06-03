@@ -107,7 +107,7 @@ class RunnerConf:
     weight_decay: float = 1e-4
     max_grad_norm: float = 1.0
     precision: Precision = Precision.FLOAT32
-
+    use_nsight: bool = False
     scheduler: Scheduler = Scheduler.MULTISTEP
     milestones: List[int] = field(default_factory=lambda: [40_000, 45_000, 49_000])
 

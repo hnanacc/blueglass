@@ -111,21 +111,16 @@ class LabelMatchingEvaluator(DatasetEvaluator):
         )
         cids, scores = cids.to(self.device), scores.to(self.device)
 
-        if self.conf.evaluator.use_box_ious:
-            assert inst.has("pred_box_ious"), "missing box_ious from predictions."
-            assert inst.pred_box_ious.ndim == 1, "expected tensor of dim 1."
-            scores *= inst.pred_box_ious.unsqueeze(dim=-1).repeat(
-                1, self.num_topk_matches
-            )
-
-        if self.conf.evaluator.use_box_objectness:
-            assert inst.has(
-                "pred_box_objectness"
-            ), "mising objectness from predictions."
-            assert inst.pred_box_objectness.ndim == 1, "expected tensor of dim 1."
-            scores *= inst.pred_box_objectness.unsqueeze(dim=-1).repeat(
-                1, self.num_topk_matches
-            )
+        for attr, flag, label in [
+            ("pred_box_ious", self.conf.evaluator.use_box_ious, "IOU"),
+            ("pred_box_objectness", self.conf.evaluator.use_box_objectness, "objectness"),
+        ]:
+            if flag:
+                val = getattr(inst, attr, None)
+                if inst.has(attr) and val is not None and val.ndim == 1:
+                    scores *= val.unsqueeze(-1).repeat(1, self.num_topk_matches)
+                else:
+                    logger.warning(f"Skipping box {label} weighting: '{attr}' missing or malformed.")
 
         sorted_scores, sorted_indices = scores.flatten().sort(descending=True)
 
@@ -141,11 +136,13 @@ class LabelMatchingEvaluator(DatasetEvaluator):
         new_inst.pred_classes = cids.flatten()[sorted_indices]
         new_inst.scores = sorted_scores
 
-        if self.conf.evaluator.use_box_ious:
-            new_inst.pred_box_ious = inst.pred_box_ious[unflattened_ind]
-
-        if self.conf.evaluator.use_box_objectness:
-            new_inst.pred_box_objectness = inst.pred_box_objectness[unflattened_ind]
+        # Copy over optional fields if enabled and available
+        for attr, flag in [
+            ("pred_box_ious", self.conf.evaluator.use_box_ious),
+            ("pred_box_objectness", self.conf.evaluator.use_box_objectness),
+        ]:
+            if flag and inst.has(attr):
+                setattr(new_inst, attr, getattr(inst, attr)[unflattened_ind])
 
         return new_inst
 

@@ -76,6 +76,7 @@ class Model(str, Enum):
     DDETR = "ddetr"
     DETR = "detr"
     FLORENCE = "florence"
+    OmniParser = "omniparser"
     PALIGEMMA = "paligemma"
     IDEFICS = "idefics"
     KOSMOS = "kosmos"

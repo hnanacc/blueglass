@@ -146,6 +146,17 @@ def register_modelstore():
                 experiment=ExperimentConf(name=f"modelstore_florence_{ds_name}"),
             ),
         )
+        
+        cs.store(
+            f"modelstore.omniparser.{ds_name}",
+            BLUEGLASSConf(
+                runner=ModelStoreRunnerConf(),
+                dataset=ModelstoreDatasetConf(test=ds_test, label=ds_test),
+                model=ModelConf(name=Model.OmniParser),
+                evaluator=LabelMatchEvaluatorConf(names=ev),
+                experiment=ExperimentConf(name=f"modelstore_omniparser_{ds_name}"),
+            ),
+        )
 
         cs.store(
             f"modelstore.gemini.{ds_name}",

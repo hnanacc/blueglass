@@ -3,6 +3,7 @@
 
 from .base import HFModel as HFModel
 from .florence import Florence as Florence
+from .omniparser import OmniParser as OmniParser
 from .paligemma import PaliGemma2 as PaliGemma2
 
 from .deepseek import DeepSeekVL as DeepSeekVL

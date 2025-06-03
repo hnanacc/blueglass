@@ -10,6 +10,7 @@ from .modelstore.mmdet import MMDetModel
 from .modelstore.huggingface import (
     PaliGemma2,
     Florence,
+    OmniParser,
     IDEFICS2,
     Kosmos2,
     InternVL2,
@@ -32,6 +33,7 @@ def build_model(conf: BLUEGLASSConf) -> nn.Module:
         Model.DETR: MMDetModel,
         Model.PALIGEMMA: PaliGemma2,
         Model.FLORENCE: Florence,
+        Model.OmniParser: OmniParser,
         Model.IDEFICS: IDEFICS2,
         Model.KOSMOS: Kosmos2,
         Model.INTERN: InternVL2,
