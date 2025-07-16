@@ -9,10 +9,12 @@
 [![Hugging Face](https://img.shields.io/badge/dataset-Hugging%20Face-orange)](https://huggingface.co/)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/IntelLabs/blueglass/badge)](https://scorecard.dev/viewer/?uri=github.com/IntelLabs/blueglass)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/IntelLabs/blueglass)
+[![ICML AI Workshop](https://img.shields.io/badge/paper-ICML%20AIW%202025-red)](https://arxiv.org/pdf/2410.15625)
 
 **BlueGlass** is an open-source framework for interpretability and analysis of vision-language and vision-only models. It empowers researchers and practitioners to understand what deep models *see* and *focus on* by offering tools to extract, probe, and build ad hoc XAI models for internal representations.
 
 The framework includes a custom infrastructure and lightweight modifications to third-party model libraries, enabling seamless feature extraction from the models. These extracted features are compiled into structured datasets called **BlueLens**, laying the foundation for advanced Explainable AI research and experimentation.
+This work has been accepted at the ICML 2025 Actionable Interpretability Workshop
 
 ---
 
